@@ -1,0 +1,22 @@
+# Java y Maven
+/target/
+/bin/
+*.class
+*.jar
+*.war
+
+# IDEs (Eclipse, IntelliJ, VS Code)
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+*.iml
+*.ipr
+*.iws
+
+# Sistema y temporales
+.DS_Store
+Thumbs.db
+.help
+.m2/
