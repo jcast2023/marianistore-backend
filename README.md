@@ -29,3 +29,9 @@ Sistema de gestión de e-commerce desarrollado con Spring Boot, enfocado en la s
 1. Clonar el repositorio.
 2. Configurar la base de datos en `src/main/resources/application.properties`.
 3. Ejecutar `./mvnw spring-boot:run` en la terminal.
+
+---
+
+## 🔗 Repositorios del Proyecto
+* **Frontend (Este repositorio):** [https://github.com/jcast2023/techshop-frontend](https://github.com/jcast2023/techshop-frontend)
+* **Backend (API Spring Boot):** [https://github.com/jcast2023/techshop-backend](https://github.com/jcast2023/techshop-backend)
