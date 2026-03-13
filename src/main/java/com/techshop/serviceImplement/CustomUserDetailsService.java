@@ -37,7 +37,7 @@ public class CustomUserDetailsService implements UserDetailsService, UsuarioServ
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findOneByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
-        System.out.println("Roles cargados para " + email + ": " + usuario.getRoles());
+       
 
         Collection<? extends GrantedAuthority> authorities = usuario.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))

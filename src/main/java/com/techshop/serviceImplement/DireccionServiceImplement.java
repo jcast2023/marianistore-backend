@@ -38,8 +38,7 @@ public class DireccionServiceImplement implements DireccionService {
 
     @Override
     public List<DireccionDTO> obtenerPorUsuarioId(Integer idUsuario) {
-        return direccionRepository.findAll().stream()
-                .filter(d -> d.getUsuario() != null && d.getUsuario().getIdUsuario().equals(idUsuario))
+        return direccionRepository.findByUsuarioIdUsuario(idUsuario).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }

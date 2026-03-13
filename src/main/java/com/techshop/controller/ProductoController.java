@@ -19,20 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.techshop.dto.ProductoDTO;
 import com.techshop.service.ProductoService;
-import com.techshop.serviceImplement.ProductoServiceImplement;
+
 
 @RestController
 @RequestMapping("/api/productos")
 public class ProductoController {
 
-    @Autowired
-    private ProductoServiceImplement service;
+    
     @Autowired
     private ProductoService productoService;
 
     @GetMapping
     public ResponseEntity<List<ProductoDTO>> listar() {
-        List<ProductoDTO> productos = service.listarProductos();
+        List<ProductoDTO> productos = productoService.listarProductos();
         if (productos.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -41,20 +40,20 @@ public class ProductoController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductoDTO> obtenerPorId(@PathVariable Integer id) {
-        return service.obtenerPorId(id)
+        return productoService.obtenerPorId(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<ProductoDTO> crearProducto(@RequestBody ProductoDTO productoDTO) {
-        ProductoDTO creado = service.crearProducto(productoDTO);
+        ProductoDTO creado = productoService.crearProducto(productoDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductoDTO> actualizarProducto(@PathVariable Integer id, @RequestBody ProductoDTO productoDTO) {
-        ProductoDTO actualizado = service.actualizarProducto(id, productoDTO);
+        ProductoDTO actualizado = productoService.actualizarProducto(id, productoDTO);
         if (actualizado == null) {
             return ResponseEntity.notFound().build();
         }
@@ -63,7 +62,7 @@ public class ProductoController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Integer id) {
-        service.eliminarProducto(id);
+    	productoService.eliminarProducto(id);
         return ResponseEntity.noContent().build();
     }
     
@@ -74,14 +73,14 @@ public class ProductoController {
             @RequestBody java.util.Map<String, Integer> body) { 
         
         Integer nuevaCantidad = body.get("stock");
-        return ResponseEntity.ok(service.actualizarStock(id, nuevaCantidad));
+        return ResponseEntity.ok(productoService.actualizarStock(id, nuevaCantidad));
     }
 
     
     @GetMapping("/stock-critico/count")
     @PreAuthorize("hasAuthority('ADMIN')") 
     public ResponseEntity<Long> obtenerConteoStockCritico() {
-        return ResponseEntity.ok(service.contarProductosBajoStock());
+        return ResponseEntity.ok(productoService.contarProductosBajoStock());
     }
     
     @GetMapping("/top5")

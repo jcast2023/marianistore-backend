@@ -1,7 +1,7 @@
 // src/main/java/com/techshop/controller/AdminController.java
 package com.techshop.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,8 +18,11 @@ import java.util.Map;
 @RequestMapping("/api/admin")
 public class AdminController {
 
-	@Autowired
-    private PedidoService pedidoService;
+	private final PedidoService pedidoService;
+
+	public AdminController(PedidoService pedidoService) {
+	    this.pedidoService = pedidoService;
+	}
 
     @GetMapping("/stats")
     @PreAuthorize("hasAuthority('ADMIN')")

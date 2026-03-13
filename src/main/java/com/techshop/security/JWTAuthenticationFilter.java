@@ -30,6 +30,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         this.token = token;
         this.usuarioRepository = usuarioRepository;
         setAuthenticationManager(authenticationManager);
+        setFilterProcessesUrl("/api/auth/login");
     }
 
     @Override

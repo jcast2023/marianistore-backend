@@ -2,6 +2,7 @@ package com.techshop.security;
 
 import java.io.IOException;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,10 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class JWTAuthorizationFilter extends OncePerRequestFilter {
+	
+	 @Autowired
+	    private Token tokenUtil;
+	 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 	        throws ServletException, IOException {
@@ -23,7 +28,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 
 	    if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
 	        String tokenStr = bearerToken.substring(7); 
-	        UsernamePasswordAuthenticationToken auth = Token.getAuth(tokenStr);
+	        UsernamePasswordAuthenticationToken auth = tokenUtil.getAuth(tokenStr);
 	        
 	        if (auth != null) {
 	            SecurityContextHolder.getContext().setAuthentication(auth);

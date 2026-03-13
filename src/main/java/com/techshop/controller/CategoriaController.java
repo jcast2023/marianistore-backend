@@ -1,7 +1,8 @@
 package com.techshop.controller;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.techshop.model.Categoria;
 import com.techshop.service.CategoriaService;
@@ -11,11 +12,14 @@ import com.techshop.service.CategoriaService;
 @CrossOrigin(origins = "http://localhost:4200")
 public class CategoriaController {
 
-    @Autowired
-    private CategoriaService categoriaService; 
+	private final CategoriaService categoriaService;
 
-    @GetMapping
-    public List<Categoria> listarTodas() {
-        return categoriaService.listarTodas();
-    }
+	public CategoriaController(CategoriaService categoriaService) {
+	    this.categoriaService = categoriaService;
+	} 
+
+	@GetMapping
+	public ResponseEntity<List<Categoria>> listarTodas() {
+	    return ResponseEntity.ok(categoriaService.listarTodas());
+	}
 }
