@@ -8,11 +8,14 @@ import com.google.zxing.oned.Code128Writer;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import com.techshop.dto.PedidoDTO;
+import com.techshop.dto.DireccionDTO;
 import com.techshop.dto.ItempedidoDTO;
+import com.techshop.model.Direccion;
 import com.techshop.model.Itempedido;
 import com.techshop.model.Pedido;
 import com.techshop.model.Producto;
 import com.techshop.model.Usuario;
+import com.techshop.repository.DireccionRepository;
 import com.techshop.repository.PedidoRepository;
 import com.techshop.repository.ProductoRepository;
 import com.techshop.repository.UsuarioRepository;
@@ -26,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,18 +44,19 @@ public class PedidoServiceImplement implements PedidoService {
     private final ProductoRepository productoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ProductoService productoService;
+    private final DireccionRepository direccionRepository;
 
     public PedidoServiceImplement(PedidoRepository pedidoRepository, 
                                  ProductoRepository productoRepository,
                                  UsuarioRepository usuarioRepository,
-                                 ProductoService productoService) {
+                                 ProductoService productoService,
+                                 DireccionRepository direccionRepository) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
         this.usuarioRepository = usuarioRepository;
         this.productoService = productoService;
+        this.direccionRepository = direccionRepository;
     }
-
-   
 
     @Override
     public void exportarFacturaPDF(Integer idPedido, HttpServletResponse response) throws IOException {
@@ -66,7 +72,7 @@ public class PedidoServiceImplement implements PedidoService {
         Font fuenteCabecera = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
         Font fuenteNormal = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
 
-       
+        // QR Code
         try {
             String urlPedido = "http://localhost:4200/mis-pedidos/" + pedido.getIdPedido();
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
@@ -77,22 +83,55 @@ public class PedidoServiceImplement implements PedidoService {
             qrImage.setAlignment(Element.ALIGN_RIGHT);
             qrImage.scalePercent(50);
             document.add(qrImage);
-        } catch (Exception e) { System.err.println("Error QR: " + e.getMessage()); }
+        } catch (Exception e) { 
+            System.err.println("Error QR: " + e.getMessage()); 
+        }
 
         document.add(new Paragraph("TechShop – Tu tienda de tecnología", fuenteTitulo));
-        document.add(new Paragraph("Los mejores productos al mejor precio", FontFactory.getFont(FontFactory.HELVETICA, 12, Color.GRAY)));
+        document.add(new Paragraph("Los mejores productos al mejor precio", 
+                FontFactory.getFont(FontFactory.HELVETICA, 12, Color.GRAY)));
         document.add(new Chunk("\n"));
 
-       
-        PdfPTable infoTable = new PdfPTable(2);
+        // ← TABLA CON 3 COLUMNAS (Cliente, Pedido, Dirección)
+        PdfPTable infoTable = new PdfPTable(3);
         infoTable.setWidthPercentage(100);
+        infoTable.setWidths(new float[]{33, 33, 34});
+        
+        // Headers
         infoTable.addCell(getStyledCell("DETALLES DEL CLIENTE", fuenteCabecera, Color.DARK_GRAY));
         infoTable.addCell(getStyledCell("DETALLES DEL PEDIDO", fuenteCabecera, Color.DARK_GRAY));
-        infoTable.addCell(new Phrase("Nombre: " + pedido.getUsuario().getNombre() + "\nEmail: " + pedido.getUsuario().getEmail(), fuenteNormal));
-        infoTable.addCell(new Phrase("Factura #: " + pedido.getIdPedido() + "\nFecha: " + pedido.getFechaPedido() + "\nEstado: " + pedido.getEstado(), fuenteNormal));
+        infoTable.addCell(getStyledCell("DIRECCIÓN DE ENVÍO", fuenteCabecera, Color.DARK_GRAY));
+        
+        // Columna 1: Datos del cliente
+        String datosCliente = "Nombre: " + pedido.getUsuario().getNombre() + 
+                             "\nEmail: " + pedido.getUsuario().getEmail();
+        infoTable.addCell(new Phrase(datosCliente, fuenteNormal));
+        
+        // Columna 2: Datos del pedido
+        String datosPedido = "Factura #: " + pedido.getIdPedido() + 
+                           "\nFecha: " + pedido.getFechaPedido() + 
+                           "\nEstado: " + pedido.getEstado();
+        
+        // Agregar método de pago si existe
+        if (pedido.getMetodoPago() != null) {
+            datosPedido += "\nMétodo: " + obtenerNombreMetodoPago(pedido.getMetodoPago());
+        }
+        
+        infoTable.addCell(new Phrase(datosPedido, fuenteNormal));
+        
+        // Columna 3: Dirección de envío
+        String direccionEnvio = "Sin dirección registrada";
+        if (pedido.getDireccionEnvio() != null) {
+            Direccion dir = pedido.getDireccionEnvio();
+            direccionEnvio = dir.getCalle() + "\n" +
+                           dir.getCiudad() + ", " + dir.getEstado() + "\n" +
+                           dir.getPais() + " - " + dir.getCodigoPostal();
+        }
+        infoTable.addCell(new Phrase(direccionEnvio, fuenteNormal));
+        
         document.add(infoTable);
 
-       
+        // Tabla de productos
         PdfPTable tablaProductos = new PdfPTable(4);
         tablaProductos.setWidthPercentage(100);
         tablaProductos.setSpacingBefore(20);
@@ -111,15 +150,17 @@ public class PedidoServiceImplement implements PedidoService {
             tablaProductos.addCell(new Phrase(item.getProducto().getNombre(), fuenteNormal));
             tablaProductos.addCell(new Phrase(String.valueOf(item.getCantidad()), fuenteNormal));
             tablaProductos.addCell(new Phrase("$" + String.format("%.2f", item.getPrecioUnitario()), fuenteNormal));
-            tablaProductos.addCell(new Phrase("$" + String.format("%.2f", item.getCantidad() * item.getPrecioUnitario()), fuenteNormal));
+            BigDecimal subtotal = item.getPrecioUnitario().multiply(BigDecimal.valueOf(item.getCantidad()));
+            tablaProductos.addCell(new Phrase("$" + String.format("%.2f", subtotal), fuenteNormal));
         }
         document.add(tablaProductos);
 
-        Paragraph total = new Paragraph("\nTOTAL PAGADO: $" + String.format("%.2f", pedido.getTotal()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, azulTech));
+        Paragraph total = new Paragraph("\nTOTAL PAGADO: $" + String.format("%.2f", pedido.getTotal()), 
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, azulTech));
         total.setAlignment(Element.ALIGN_RIGHT);
         document.add(total);
 
-       
+        // Código de barras
         try {
             document.add(new Chunk("\n\n"));
             String codigoBarrasStr = String.format("%012d", pedido.getIdPedido());
@@ -130,9 +171,25 @@ public class PedidoServiceImplement implements PedidoService {
             Image barcodeImage = Image.getInstance(barcodeStream.toByteArray());
             barcodeImage.setAlignment(Element.ALIGN_CENTER);
             document.add(barcodeImage);
-        } catch (Exception e) { System.err.println("Error Barras: " + e.getMessage()); }
+        } catch (Exception e) { 
+            System.err.println("Error Barras: " + e.getMessage()); 
+        }
 
         document.close();
+    }
+
+    // ← NUEVO MÉTODO AUXILIAR
+    private String obtenerNombreMetodoPago(String metodoPago) {
+        switch (metodoPago) {
+            case "TARJETA_CREDITO":
+                return "Tarjeta de Crédito";
+            case "PAYPAL":
+                return "PayPal";
+            case "TRANSFERENCIA":
+                return "Transferencia Bancaria";
+            default:
+                return metodoPago;
+        }
     }
 
     private PdfPCell getStyledCell(String texto, Font fuente, Color color) {
@@ -142,8 +199,6 @@ public class PedidoServiceImplement implements PedidoService {
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         return cell;
     }
-
-    
 
     @Override
     public List<PedidoDTO> listarPedidos() {
@@ -167,23 +222,34 @@ public class PedidoServiceImplement implements PedidoService {
     @Override
     @Transactional
     public PedidoDTO crearPedido(PedidoDTO pedidoDTO) {
-       
         if (pedidoDTO.getIdUsuario() == null) {
             throw new IllegalArgumentException("El ID de usuario es obligatorio para crear el pedido.");
         }
 
         Pedido pedido = new Pedido();
         
-      
         Usuario usuario = usuarioRepository.findById(pedidoDTO.getIdUsuario())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + pedidoDTO.getIdUsuario()));
         
         pedido.setUsuario(usuario);
-        pedido.setFechaPedido(new java.util.Date());
+        pedido.setFechaPedido(LocalDateTime.now());
         pedido.setEstado("PENDIENTE");
         pedido.setTotal(pedidoDTO.getTotal());
-
         
+        // Asociación de dirección
+        if (pedidoDTO.getIdDireccionEnvio() == null) {
+            throw new IllegalArgumentException("Debe seleccionar una dirección de envío");
+        }
+
+        Direccion direccion = direccionRepository.findById(pedidoDTO.getIdDireccionEnvio())
+                .orElseThrow(() -> new RuntimeException("Dirección no encontrada"));
+
+        if (!direccion.getUsuario().getIdUsuario().equals(usuario.getIdUsuario())) {
+            throw new IllegalArgumentException("La dirección no pertenece al usuario");
+        }
+
+        pedido.setDireccionEnvio(direccion);
+
         List<Itempedido> items = pedidoDTO.getItems().stream().map(itemDTO -> {
             if (itemDTO.getIdProducto() == null) {
                 throw new IllegalArgumentException("El ID del producto en el ítem no puede ser nulo.");
@@ -196,7 +262,6 @@ public class PedidoServiceImplement implements PedidoService {
                 throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
             }
 
-           
             producto.setStock(producto.getStock() - itemDTO.getCantidad());
             productoRepository.save(producto);
 
@@ -215,10 +280,13 @@ public class PedidoServiceImplement implements PedidoService {
 
     @Override
     @Transactional
-    public PedidoDTO pagarPedido(Integer id) {
+    public PedidoDTO pagarPedido(Integer id, String metodoPago) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
         pedido.setEstado("PAGADO");
+        if (metodoPago != null && !metodoPago.isEmpty()) {
+            pedido.setMetodoPago(metodoPago);
+        }
         return mapToDTO(pedidoRepository.save(pedido));
     }
 
@@ -235,7 +303,6 @@ public class PedidoServiceImplement implements PedidoService {
         pedidoRepository.deleteById(id);
     }
 
-  
     private PedidoDTO mapToDTO(Pedido pedido) {
         PedidoDTO dto = new PedidoDTO();
         dto.setIdPedido(pedido.getIdPedido());
@@ -244,8 +311,13 @@ public class PedidoServiceImplement implements PedidoService {
         dto.setFechaPedido(pedido.getFechaPedido());
         dto.setEstado(pedido.getEstado());
         dto.setTotal(pedido.getTotal());
-
+        dto.setMetodoPago(pedido.getMetodoPago());
         
+        if (pedido.getDireccionEnvio() != null) {
+            dto.setIdDireccionEnvio(pedido.getDireccionEnvio().getIdDireccion());
+            dto.setDireccionEnvio(mapDireccionToDTO(pedido.getDireccionEnvio()));
+        }
+
         List<ItempedidoDTO> itemDTOs = pedido.getItems().stream().map(item -> {
             ItempedidoDTO itemDTO = new ItempedidoDTO();
             itemDTO.setIdItemPedido(item.getIdItemPedido());
@@ -262,6 +334,20 @@ public class PedidoServiceImplement implements PedidoService {
         return dto;
     }
     
+    private DireccionDTO mapDireccionToDTO(Direccion direccion) {
+        if (direccion == null) return null;
+
+        DireccionDTO dto = new DireccionDTO();
+        dto.setIdDireccion(direccion.getIdDireccion());
+        dto.setIdUsuario(direccion.getUsuario().getIdUsuario());
+        dto.setCalle(direccion.getCalle());
+        dto.setCiudad(direccion.getCiudad());
+        dto.setEstado(direccion.getEstado());
+        dto.setCodigoPostal(direccion.getCodigoPostal());
+        dto.setPais(direccion.getPais());
+        return dto;
+    }
+    
     @Override 
     public PedidoDTO actualizarEstadoManual(Integer id, String nuevoEstado) {
         return pedidoRepository.findById(id).map(pedido -> {
@@ -270,7 +356,6 @@ public class PedidoServiceImplement implements PedidoService {
             return mapToDTO(pedidoGuardado); 
         }).orElse(null);
     }
-    
 
     public Map<String, Object> obtenerEstadisticasDashboard() {
         Map<String, Object> stats = new HashMap<>();
@@ -279,5 +364,12 @@ public class PedidoServiceImplement implements PedidoService {
         stats.put("stockCritico", productoService.contarProductosBajoStock()); 
         stats.put("totalProductos", productoRepository.count());
         return stats;
+    }
+    
+    @Override
+    public List<PedidoDTO> obtenerPedidosPorUsuarioId(Integer idUsuario) {
+        return pedidoRepository.findByUsuarioIdUsuario(idUsuario).stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 }

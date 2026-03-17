@@ -1,6 +1,7 @@
 package com.techshop.dto;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
@@ -21,5 +22,5 @@ public class UsuarioDTO {
     private String username;
     
     @PastOrPresent(message = "La fecha de creación no puede ser futura")
-    private Date fechaCreacion;
+    private LocalDateTime fechaCreacion;
 }

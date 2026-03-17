@@ -1,5 +1,7 @@
 package com.techshop.model;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -39,7 +41,7 @@ public class Producto {
     private String descripcion;
 
     @PositiveOrZero(message = "El precio debe ser positivo o cero")
-    private double precio;
+    private BigDecimal precio;
 
     @PositiveOrZero(message = "El stock debe ser positivo o cero")
     private int stock;
@@ -53,7 +55,7 @@ public class Producto {
 
     @PastOrPresent(message = "La fecha de creación no puede ser futura")
     @Column(name = "fecha_creacion")
-    private Date fechaCreacion;
+    private LocalDateTime fechaCreacion;
 
     @JsonIgnore
     @OneToMany(mappedBy = "producto")

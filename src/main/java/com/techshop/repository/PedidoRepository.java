@@ -22,4 +22,8 @@ public interface PedidoRepository extends JpaRepository<Pedido,Integer> {
 
 	@Query("SELECT COUNT(p) FROM Pedido p WHERE p.estado = 'PAGADO'")
 	Long contarPedidosPorEnviar();
+	
+	List<Pedido> findByUsuarioIdUsuario(Integer idUsuario);
+	
+	long countByDireccionEnvio_IdDireccion(Integer idDireccion);
 }

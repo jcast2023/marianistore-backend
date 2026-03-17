@@ -2,6 +2,9 @@ package com.techshop.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.DecimalMin;
 import lombok.Data;
 
@@ -24,7 +27,7 @@ public class ItempedidoDTO {
 
     @NotNull(message = "El precio es obligatorio")
     @DecimalMin(value = "0.0", inclusive = true, message = "El precio unitario debe ser positivo o cero")
-    private Double precioUnitario;
+    private BigDecimal precioUnitario;
     
     private String imagen;
 }

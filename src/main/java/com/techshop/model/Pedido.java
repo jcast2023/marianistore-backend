@@ -1,7 +1,9 @@
 package com.techshop.model;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
+
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -37,15 +39,22 @@ public class Pedido {
 
     @PastOrPresent(message = "La fecha del pedido no puede ser futura")
     @Column(name = "fecha_pedido")
-    private Date fechaPedido;
+    private LocalDateTime fechaPedido;
 
     @DecimalMin(value = "0.0", inclusive = true, message = "El total debe ser mayor o igual que cero")
     @NotNull(message = "El total es obligatorio")
-    private Double total;
+    private BigDecimal total;
 
     @NotBlank(message = "El estado es obligatorio")
     private String estado;
+    
+    @Column(name = "metodo_pago")
+    private String metodoPago;
 
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Itempedido> items = new ArrayList<>();
+    
+    @ManyToOne
+    @JoinColumn(name = "direccion_envio_id")   // ← relación con Direccion
+    private Direccion direccionEnvio;;
 }

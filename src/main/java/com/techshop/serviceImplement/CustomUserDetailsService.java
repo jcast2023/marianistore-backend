@@ -1,5 +1,6 @@
 package com.techshop.serviceImplement;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -76,7 +77,7 @@ public class CustomUserDetailsService implements UserDetailsService, UsuarioServ
             throw new IllegalArgumentException("El username ya existe, elige otro.");
         }
         Usuario usuario = mapToEntity(usuarioRegistroDTO);
-        usuario.setFechaCreacion(new Date());
+        usuario.setFechaCreacion(LocalDateTime.now());
         usuario.getRoles().add(Usuario.Role.USER);
         Usuario saved = usuarioRepository.save(usuario);
         return mapToDTO(saved);

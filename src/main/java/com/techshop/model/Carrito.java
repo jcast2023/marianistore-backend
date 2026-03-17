@@ -1,5 +1,6 @@
 package com.techshop.model;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -35,7 +36,7 @@ public class Carrito {
 
     @PastOrPresent(message = "La fecha de creación no puede ser futura")
     @Column(name = "fecha_creacion")
-    private Date fechaCreacion;
+    private LocalDateTime fechaCreacion;
 
     @Column(name = "estado")
     private String estado;

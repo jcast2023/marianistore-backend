@@ -1,5 +1,6 @@
 package com.techshop.serviceImplement;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class ProductoServiceImplement implements ProductoService {
 	    @Override
 	    public ProductoDTO crearProducto(ProductoDTO productoDTO) {
 	        Producto producto = mapToEntity(productoDTO);
-	        producto.setFechaCreacion(new Date());
+	        producto.setFechaCreacion(LocalDateTime.now());
 	        Producto saved = productoRepository.save(producto);
 	        return mapToDTO(saved);
 	    }

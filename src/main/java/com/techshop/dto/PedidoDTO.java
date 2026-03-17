@@ -1,7 +1,9 @@
 package com.techshop.dto;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
+
 import java.util.List;
 
 import jakarta.validation.constraints.NotNull;
@@ -17,12 +19,19 @@ public class PedidoDTO {
 
     private String emailUsuario;
     
-    private Date fechaPedido;
+    private LocalDateTime fechaPedido;
 
     @NotNull(message = "El total es obligatorio")
-    private Double total;
+    private BigDecimal total;
     
     private String estado = "PENDIENTE";
+    
+    private String metodoPago;
 
     private List<ItempedidoDTO> items = new ArrayList<>();
+    
+    @NotNull(message = "La dirección de envío es obligatoria")
+    private Integer idDireccionEnvio;
+    
+    private DireccionDTO direccionEnvio;
 }

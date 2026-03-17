@@ -1,5 +1,7 @@
 package com.techshop.dto;
 
+import java.math.BigDecimal;
+
 import com.techshop.model.Categoria;
 
 import jakarta.validation.constraints.NotBlank;
@@ -20,7 +22,7 @@ public class ProductoDTO {
 
     @NotNull(message = "El precio es obligatorio")
     @PositiveOrZero(message = "El precio debe ser cero o positivo")
-    private Double precio;
+    private BigDecimal precio;
 
     private String imagen;
     

@@ -7,7 +7,8 @@ import com.techshop.repository.DireccionRepository;
 import com.techshop.repository.UsuarioRepository;
 import com.techshop.service.DireccionService;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
+import com.techshop.repository.PedidoRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -17,10 +18,15 @@ public class DireccionServiceImplement implements DireccionService {
 
     private final DireccionRepository direccionRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PedidoRepository pedidoRepository;
 
-    public DireccionServiceImplement(DireccionRepository direccionRepository, UsuarioRepository usuarioRepository) {
+    public DireccionServiceImplement(
+            DireccionRepository direccionRepository, 
+            UsuarioRepository usuarioRepository,
+            PedidoRepository pedidoRepository) {  // ← AGREGAR PARÁMETRO
         this.direccionRepository = direccionRepository;
         this.usuarioRepository = usuarioRepository;
+        this.pedidoRepository = pedidoRepository;  // ← ASIGNAR
     }
 
     @Override
@@ -67,8 +73,25 @@ public class DireccionServiceImplement implements DireccionService {
         return null;
     }
 
-    @Override
+    @Override	
+    @Transactional
     public void eliminarDireccion(Integer id) {
+        // 1. Verificar que la dirección existe
+        Direccion direccion = direccionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dirección no encontrada"));
+        
+        // 2. Verificar si tiene pedidos asociados
+        long pedidosAsociados = pedidoRepository.countByDireccionEnvio_IdDireccion(id);
+        
+        if (pedidosAsociados > 0) {
+            throw new IllegalStateException(
+                "No se puede eliminar esta dirección porque tiene " + 
+                pedidosAsociados + " pedido(s) asociado(s). " +
+                "Los pedidos anteriores mantienen el registro de la dirección de envío."
+            );
+        }
+        
+        // 3. Si no hay pedidos asociados, eliminar
         direccionRepository.deleteById(id);
     }
 

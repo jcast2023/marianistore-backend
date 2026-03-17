@@ -2,6 +2,8 @@ package com.techshop.model;
 
 
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -43,5 +45,5 @@ public class Itempedido {
     @DecimalMin(value = "0.0", inclusive = true, message = "El precio unitario debe ser mayor o igual a cero")
     @NotNull(message = "El precio unitario es obligatorio")
     @Column(name = "precio_unitario")
-    private Double precioUnitario;
+    private BigDecimal precioUnitario;
 }

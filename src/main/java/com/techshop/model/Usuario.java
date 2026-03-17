@@ -1,5 +1,6 @@
 package com.techshop.model;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -39,7 +40,7 @@ public class Usuario implements UserDetails {
     private String password;
 
     @Column(name = "fecha_creacion")
-    private Date fechaCreacion;
+    private LocalDateTime fechaCreacion;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
@@ -50,7 +51,7 @@ public class Usuario implements UserDetails {
     // Ciclo de vida: Asigna la fecha automáticamente antes de guardar en la DB
     @PrePersist
     protected void onCreate() {
-        this.fechaCreacion = new Date();
+    	this.fechaCreacion = LocalDateTime.now();
     }
 
     public enum Role { USER, ADMIN }

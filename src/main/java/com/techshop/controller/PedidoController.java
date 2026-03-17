@@ -17,6 +17,7 @@ import com.techshop.service.PedidoService;
 
 @RestController
 @RequestMapping("/api/pedidos")
+@CrossOrigin(origins = "http://localhost:4200")
 public class PedidoController {
 
     private final PedidoService pedidoService;
@@ -25,20 +26,34 @@ public class PedidoController {
         this.pedidoService = pedidoService;
     }
 
-    /**
-     * Obtener un pedido por ID con validación de propiedad.
-     */
     @GetMapping("/{id}")
     public ResponseEntity<PedidoDTO> obtenerPedidoPorId(@PathVariable Integer id, Authentication authentication) {
         return pedidoService.obtenerPorId(id)
             .map(pedido -> {
-                // VALIDACIÓN DE SEGURIDAD
                 if (!esPropietarioOAdmin(pedido, authentication)) {
                     return ResponseEntity.status(403).<PedidoDTO>build();
                 }
                 return ResponseEntity.ok(pedido);
             })
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/usuario/{idUsuario}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
+    public ResponseEntity<List<PedidoDTO>> obtenerPedidosPorUsuarioId(
+            @PathVariable Integer idUsuario, 
+            Authentication authentication) {
+        
+        String emailLogueado = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ADMIN"));
+        
+        if (!isAdmin) {
+            Optional<PedidoDTO> primerPedido = pedidoService.obtenerPorId(idUsuario);
+        }
+        
+        List<PedidoDTO> pedidos = pedidoService.obtenerPedidosPorUsuarioId(idUsuario);
+        return ResponseEntity.ok(pedidos);
     }
 
     @PostMapping
@@ -49,7 +64,7 @@ public class PedidoController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')") // Solo el admin debería editar pedidos generales
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PedidoDTO> actualizarPedido(@PathVariable Integer id, @RequestBody PedidoDTO pedidoDTO) {
         PedidoDTO pedidoActualizado = pedidoService.actualizarPedido(id, pedidoDTO);
         if (pedidoActualizado == null) {
@@ -67,14 +82,17 @@ public class PedidoController {
     
     @PutMapping("/{id}/pagar")
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
-    public ResponseEntity<PedidoDTO> pagarPedido(@PathVariable Integer id, Authentication authentication) {
-        // Validamos propiedad antes de permitir el pago
+    public ResponseEntity<PedidoDTO> pagarPedido(
+            @PathVariable Integer id, 
+            @RequestParam(required = false) String metodoPago,
+            Authentication authentication) {
+        
         Optional<PedidoDTO> pedidoOpt = pedidoService.obtenerPorId(id);
         if (pedidoOpt.isPresent() && !esPropietarioOAdmin(pedidoOpt.get(), authentication)) {
             return ResponseEntity.status(403).build();
         }
         
-        PedidoDTO pedidoPagado = pedidoService.pagarPedido(id);
+        PedidoDTO pedidoPagado = pedidoService.pagarPedido(id, metodoPago);
         return ResponseEntity.ok(pedidoPagado);
     }
     
@@ -94,27 +112,29 @@ public class PedidoController {
         return ResponseEntity.ok(pedidos);
     }
     
-    /**
-     * Descarga de factura PDF blindada.
-     */
+    // ← ACTUALIZADO: inline para ver en navegador
     @GetMapping("/{id}/factura")
-    public void descargarFactura(@PathVariable Integer id, HttpServletResponse response, Authentication authentication) throws IOException {
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
+    public void descargarFactura(
+            @PathVariable Integer id, 
+            HttpServletResponse response, 
+            Authentication authentication) throws IOException {
+        
         Optional<PedidoDTO> pedidoOpt = pedidoService.obtenerPorId(id);
         
         if (pedidoOpt.isEmpty()) {
-            response.sendError(404, "Pedido no encontrado");
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, "Pedido no encontrado");
             return;
         }
 
-        // VALIDACIÓN DE SEGURIDAD
         if (!esPropietarioOAdmin(pedidoOpt.get(), authentication)) {
-            response.sendError(403, "No tienes permiso para acceder a esta factura.");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "No tienes permiso para acceder a esta factura");
             return;
         }
 
         response.setContentType("application/pdf");
-        String headerValue = "attachment; filename=factura_pedido_" + id + ".pdf";
-        response.setHeader("Content-Disposition", headerValue);
+        // ← CAMBIAR A "inline" para ver en navegador (o "attachment" para descargar)
+        response.setHeader("Content-Disposition", "inline; filename=factura_pedido_" + id + ".pdf");
 
         pedidoService.exportarFacturaPDF(id, response);
     }
@@ -131,10 +151,6 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoActualizado);
     }
 
-    /**
-     * MÉTODO PRIVADO REUTILIZABLE para validación de identidad.
-     * Verifica si el usuario logueado es el dueño del recurso o tiene rol de administrador.
-     */
     private boolean esPropietarioOAdmin(PedidoDTO pedido, Authentication authentication) {
         String emailLogueado = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()

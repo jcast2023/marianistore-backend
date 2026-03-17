@@ -2,7 +2,9 @@ package com.techshop.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import java.util.Date;
+
+import java.time.LocalDateTime;
+
 
 @Data
 public class CarritoDTO {
@@ -12,7 +14,7 @@ public class CarritoDTO {
     private Integer idUsuario;
 
     @NotNull(message = "La fecha de creación es obligatoria")
-    private Date fechaCreacion;
+    private LocalDateTime fechaCreacion;
 
     private String estado;
 }
