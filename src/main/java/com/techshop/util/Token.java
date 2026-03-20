@@ -21,10 +21,10 @@ import java.nio.charset.StandardCharsets;
 public class Token {
     
 	
-	    @Value("${app.jwt.secret}")  
+	    @Value("${jwt.secret}")  
 	    private String tokenFirma;
 
-	    @Value("${app.jwt.expiration:3600}")  
+	    @Value("${jwt.expiration:3600}")  
 	    private Long tokenDuracion;
     
     public String crearToken(Integer idUsuario, String user, String email, List<String> roles) {
