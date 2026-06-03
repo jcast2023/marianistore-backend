@@ -9,7 +9,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -17,7 +16,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.tiendaonline.util.Token;
 import com.tiendaonline.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;	
+import lombok.RequiredArgsConstructor;
 import java.util.Arrays;
 
 @Configuration
@@ -26,7 +25,6 @@ import java.util.Arrays;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    
     private final JWTAuthorizationFilter jwtAuthorizationFilter;
     private final Token token;
     private final UsuarioRepository usuarioRepository;
@@ -37,50 +35,47 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JWTAuthenticationFilter jwtAuthenticationFilter(AuthenticationManager authenticationManager) {
-        return new JWTAuthenticationFilter(authenticationManager, token, usuarioRepository);
-    }
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        JWTAuthenticationFilter jwtAuthenticationFilter =
+                new JWTAuthenticationFilter(authenticationManager, token, usuarioRepository);
+
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**", "/login", "/api/usuarios").permitAll()
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html").permitAll()
-                .requestMatchers("/api/newsletter/**").permitAll()
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authz -> authz
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/login", "/api/usuarios").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/productos/**").permitAll()
+                        .requestMatchers("/api/categorias/**").permitAll()
+                        .requestMatchers("/api/pagos/webhook").permitAll()
+                        // ─── LIBRO DE RECLAMACIONES PÚBLICO ───
+                        // Permite que usuarios no logueados envíen el formulario POST
+                        .requestMatchers(HttpMethod.POST, "/api/reclamaciones").permitAll()
+                        // Permite que consulten el código de seguimiento sin token
+                        .requestMatchers(HttpMethod.GET, "/api/reclamaciones/buscar/**").permitAll()
 
-                    .requestMatchers(HttpMethod.POST, "/api/reclamaciones").permitAll() // Cualquiera puede reclamar
-                    .requestMatchers(HttpMethod.GET, "/api/reclamaciones").hasAuthority("ADMIN") // Solo el admin los lista
-                    .requestMatchers(HttpMethod.GET, "/api/reclamaciones/buscar/**").permitAll() // Opcional: Consulta pública por código
-
-                .requestMatchers(HttpMethod.GET, "/api/productos/**").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
-                .requestMatchers("/api/productos/**").hasAuthority("ADMIN")
-                .requestMatchers("/api/pedidos/**").authenticated() 
-                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
-            .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterAt(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost:81"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")); 
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost:81",
+                "https://flaccid-joyfully-exhale.ngrok-free.dev"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-    
-    
 }

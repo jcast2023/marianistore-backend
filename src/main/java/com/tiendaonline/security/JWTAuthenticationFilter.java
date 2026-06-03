@@ -34,12 +34,13 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     }
 
     @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) 
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
         try {
             LoginRequest loginRequest = new ObjectMapper().readValue(request.getInputStream(), LoginRequest.class);
-            return authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
+
+            return super.getAuthenticationManager().authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
             );
         } catch (IOException e) {
             throw new RuntimeException("Fallo al leer las credenciales");
@@ -48,12 +49,11 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
-            Authentication authResult) throws IOException, ServletException {
-        
+                                            Authentication authResult) throws IOException, ServletException {
+
         UserDetails userDetails = (UserDetails) authResult.getPrincipal();
         String email = userDetails.getUsername();
-        
-        
+
         Usuario usuario = usuarioRepository.findOneByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -62,7 +62,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                 .map(role -> role.replace("ROLE_", ""))
                 .collect(Collectors.toList());
 
-        
         String tokenValue = token.crearToken(usuario.getIdUsuario(), usuario.getNombre(), email, roles);
 
         response.addHeader("Authorization", "Bearer " + tokenValue);
@@ -72,8 +71,8 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     }
 
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) 
-            throws IOException, ServletException {
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+                                              AuthenticationException failed) throws IOException, ServletException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.getWriter().write("{\"error\":\"Credenciales inválidas\"}");

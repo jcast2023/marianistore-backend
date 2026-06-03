@@ -28,6 +28,7 @@ public class Token {
 	    private Long tokenDuracion;
     
     public String crearToken(Integer idUsuario, String user, String email, List<String> roles) {
+        
         long expiracionTiempo = tokenDuracion * 1_000;
         Date expiracionFecha = new Date(System.currentTimeMillis() + expiracionTiempo);
         
@@ -63,6 +64,7 @@ public class Token {
 
             return new UsernamePasswordAuthenticationToken(email, null, authorities);
         } catch (Exception e) {
+            System.err.println("Error validando token: " + e.getMessage());
             return null;
         }
     }
