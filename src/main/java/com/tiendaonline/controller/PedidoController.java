@@ -17,7 +17,7 @@ import com.tiendaonline.service.PedidoService;
 
 @RestController
 @RequestMapping("/api/pedidos")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 public class PedidoController {
 
     private final PedidoService pedidoService;
