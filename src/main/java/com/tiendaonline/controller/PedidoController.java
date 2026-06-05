@@ -27,17 +27,23 @@ public class PedidoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<PedidoDTO> obtenerPedidoPorId(
             @PathVariable Integer id,
             Authentication authentication) {
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).<PedidoDTO>build(); // Genérico explícito
+        }
+
         return pedidoService.obtenerPorId(id)
                 .map(pedido -> {
                     if (!esPropietarioOAdmin(pedido, authentication)) {
-                        return ResponseEntity.status(403).<PedidoDTO>build();
+                        return ResponseEntity.status(403).<PedidoDTO>build(); // ✅ Corregido aquí
                     }
                     return ResponseEntity.ok(pedido);
                 })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.status(404).<PedidoDTO>build()); // Genérico explícito
     }
 
     @GetMapping("/usuario/{idUsuario}")
