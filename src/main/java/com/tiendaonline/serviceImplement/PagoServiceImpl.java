@@ -56,10 +56,17 @@ public class PagoServiceImpl implements PagoService {
 
         try {
             System.out.println("Construyendo ítem de Mercado Pago...");
+            BigDecimal monto = request.getMonto();
+            if (monto == null || monto.compareTo(BigDecimal.ZERO) == 0) {
+                Pedido pedido = pedidoRepository.findById(request.getPedidoId())
+                        .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+                monto = new BigDecimal(String.valueOf(pedido.getTotal()));
+            }
+
             PreferenceItemRequest item = PreferenceItemRequest.builder()
                     .title(request.getDescripcion())
                     .quantity(1)
-                    .unitPrice(request.getMonto())
+                    .unitPrice(monto)
                     .currencyId("PEN")
                     .build();
 
@@ -71,9 +78,9 @@ public class PagoServiceImpl implements PagoService {
             System.out.println("Configurando URLs de retorno...");
 
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success("http://localhost:4200/my-orders")
-                    .failure("http://localhost:4200/my-orders")
-                    .pending("http://localhost:4200/my-orders")
+                    .success("https://marianistore-frontend.vercel.app/mis-pedidos")
+                    .failure("https://marianistore-frontend.vercel.app/mis-pedidos")
+                    .pending("https://marianistore-frontend.vercel.app/mis-pedidos")
                     .build();
 
             System.out.println("Enviando preferencia a la API de Mercado Pago...");
