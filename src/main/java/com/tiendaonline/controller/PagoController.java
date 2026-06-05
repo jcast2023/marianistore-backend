@@ -68,4 +68,10 @@ public class PagoController {
 
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/webhook")
+    public ResponseEntity<?> verificarWebhook() {
+        System.out.println("=== VERIFICACIÓN DE WEBHOOK DESDE EL NAVEGADOR (GET) ===");
+        return ResponseEntity.ok(Map.of("status", "ok", "mensaje", "El endpoint del webhook está escuchando correctamente"));
+    }
 }
