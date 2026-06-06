@@ -415,6 +415,7 @@ public class PedidoServiceImplement implements PedidoService {
     }
 
     @Override
+    @Transactional(readOnly = true)  // ← agregar esto
     public Optional<PedidoDTO> obtenerPorId(Integer id) {
         return pedidoRepository.findById(id).map(this::mapToDTO);
     }
