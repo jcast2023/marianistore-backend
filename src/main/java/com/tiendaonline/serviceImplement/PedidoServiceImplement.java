@@ -80,71 +80,251 @@ public class PedidoServiceImplement implements PedidoService {
     @Override
     @Transactional
     public PedidoDTO crearPedido(PedidoDTO pedidoDTO) {
+
         if (pedidoDTO.getIdUsuario() == null) {
-            throw new IllegalArgumentException("El ID de usuario es obligatorio para crear el pedido.");
+            throw new IllegalArgumentException(
+                    "El ID de usuario es obligatorio.");
         }
 
         Pedido pedido = new Pedido();
 
-        Usuario usuario = usuarioRepository.findById(pedidoDTO.getIdUsuario())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + pedidoDTO.getIdUsuario()));
+        Usuario usuario =
+                usuarioRepository.findById(
+                                pedidoDTO.getIdUsuario())
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Usuario no encontrado con ID: "
+                                                + pedidoDTO.getIdUsuario()));
 
         pedido.setUsuario(usuario);
-        pedido.setFechaPedido(LocalDateTime.now());
-        pedido.setEstado("PENDIENTE");
-        pedido.setTotal(pedidoDTO.getTotal());
+
+        pedido.setFechaPedido(
+                LocalDateTime.now());
+
+        pedido.setEstado(
+                "PENDIENTE");
+
+
+    /*
+      VALIDAR DIRECCION
+    */
 
         if (pedidoDTO.getIdDireccionEnvio() == null) {
-            throw new IllegalArgumentException("Debe seleccionar una dirección de envío");
+
+            throw new IllegalArgumentException(
+                    "Debe seleccionar una dirección");
         }
 
-        Direccion direccion = direccionRepository.findById(pedidoDTO.getIdDireccionEnvio())
-                .orElseThrow(() -> new RuntimeException("Dirección no encontrada"));
+        Direccion direccion =
+                direccionRepository.findById(
+                                pedidoDTO.getIdDireccionEnvio())
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Dirección no encontrada"));
 
-        if (!direccion.getUsuario().getIdUsuario().equals(usuario.getIdUsuario())) {
-            throw new IllegalArgumentException("La dirección no pertenece al usuario");
+        if (!direccion.getUsuario()
+                .getIdUsuario()
+                .equals(usuario.getIdUsuario())) {
+
+            throw new IllegalArgumentException(
+                    "La dirección no pertenece al usuario");
         }
 
-        pedido.setDireccionEnvio(direccion);
+        pedido.setDireccionEnvio(
+                direccion);
 
-        List<Itempedido> items = pedidoDTO.getItems().stream().map(itemDTO -> {
-            if (itemDTO.getIdProducto() == null) {
-                throw new IllegalArgumentException("El ID del producto en el ítem no puede ser nulo.");
-            }
 
-            Producto producto = productoRepository.findById(itemDTO.getIdProducto())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getIdProducto()));
+    /*
+   CREAR ITEMS DEL PEDIDO
+*/
 
-            if (producto.getStock() < itemDTO.getCantidad()) {
-                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
-            }
+        if (
+                pedidoDTO.getItems() == null ||
+                        pedidoDTO.getItems().isEmpty()
+        ) {
 
-            producto.setStock(producto.getStock() - itemDTO.getCantidad());
-            productoRepository.save(producto);
+            throw new IllegalArgumentException(
+                    "El pedido debe contener items"
+            );
 
-            Itempedido item = new Itempedido();
-            item.setPedido(pedido);
-            item.setProducto(producto);
-            item.setCantidad(itemDTO.getCantidad());
-            item.setPrecioUnitario(itemDTO.getPrecioUnitario());
-            return item;
-        }).collect(Collectors.toList());
+        }
 
-        pedido.setItems(items);
-        Pedido guardado = pedidoRepository.save(pedido);
+        List<Itempedido> items =
 
-        // Vaciar carrito en BD
+                pedidoDTO.getItems()
+
+                        .stream()
+
+                        .map(itemDTO -> {
+
+                            if(itemDTO.getIdProducto()==null){
+
+                                throw new IllegalArgumentException(
+                                        "Producto inválido"
+                                );
+
+                            }
+
+                            Producto producto =
+
+                                    productoRepository.findById(
+                                                    itemDTO.getIdProducto()
+                                            )
+
+                                            .orElseThrow(
+                                                    ()->new RuntimeException(
+                                                            "Producto no encontrado"
+                                                    )
+                                            );
+
+                    /*
+                      VALIDAR STOCK
+                    */
+
+                            if(
+                                    producto.getStock()
+                                            <
+                                            itemDTO.getCantidad()
+                            ){
+
+                                throw new RuntimeException(
+
+                                        "Stock insuficiente para "
+
+                                                + producto.getNombre()
+
+                                );
+
+                            }
+
+                    /*
+                       DESCONTAR STOCK
+                    */
+
+                            producto.setStock(
+
+                                    producto.getStock()
+
+                                            -
+
+                                            itemDTO.getCantidad()
+
+                            );
+
+                            productoRepository.save(
+                                    producto
+                            );
+
+                            Itempedido item =
+                                    new Itempedido();
+
+                            item.setPedido(
+                                    pedido
+                            );
+
+                            item.setProducto(
+                                    producto
+                            );
+
+                            item.setCantidad(
+                                    itemDTO.getCantidad()
+                            );
+
+                    /*
+                       PRECIO REAL DE BD
+                    */
+
+                            item.setPrecioUnitario(
+                                    producto.getPrecio()
+                            );
+
+                            return item;
+
+                        })
+
+                        .collect(Collectors.toList());
+
+
+
+/*
+   CALCULAR TOTAL REAL
+*/
+
+        BigDecimal totalCalculado =
+
+                items.stream()
+
+                        .map(
+
+                                item ->
+
+                                        item.getPrecioUnitario()
+
+                                                .multiply(
+
+                                                        BigDecimal.valueOf(
+
+                                                                item.getCantidad()
+
+                                                        )
+
+                                                )
+
+                        )
+
+                        .reduce(
+
+                                BigDecimal.ZERO,
+
+                                BigDecimal::add
+
+                        );
+
+
+        pedido.setTotal(
+                totalCalculado
+        );
+
+        pedido.setItems(
+                items
+        );
+
+
+    /*
+      GUARDAR PEDIDO
+    */
+
+        Pedido guardado =
+                pedidoRepository.save(
+                        pedido);
+
+
+
+    /*
+      VACIAR CARRITO BD
+    */
+
         carritoRepository
-                .findByUsuario_IdUsuarioAndEstado(usuario.getIdUsuario(), "ACTIVO")
+                .findByUsuario_IdUsuarioAndEstado(
+                        usuario.getIdUsuario(),
+                        "ACTIVO")
+
                 .ifPresent(carrito -> {
-                    List<Itemcarrito> itemsCarrito = itemcarritoRepository
-                            .findByCarrito_IdCarrito(carrito.getIdCarrito());
-                    itemcarritoRepository.deleteAll(itemsCarrito);
+
+                    List<Itemcarrito> itemsCarrito =
+                            itemcarritoRepository
+                                    .findByCarrito_IdCarrito(
+                                            carrito.getIdCarrito());
+
+                    itemcarritoRepository
+                            .deleteAll(
+                                    itemsCarrito);
+
                 });
 
-        // ❌ CORREO ELIMINADO DE AQUÍ — se envía después del pago
 
-        return mapToDTO(guardado);
+        return mapToDTO(
+                guardado);
     }
 
     @Override
@@ -154,7 +334,15 @@ public class PedidoServiceImplement implements PedidoService {
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
         if ("PAGADO".equals(pedido.getEstado())) {
-            throw new RuntimeException("El pedido ya fue pagado.");
+
+            System.out.println(
+                    "Pedido "
+                            + pedido.getIdPedido()
+                            + " ya estaba pagado"
+            );
+
+            return mapToDTO(pedido);
+
         }
 
         pedido.setEstado("PAGADO");
@@ -166,7 +354,35 @@ public class PedidoServiceImplement implements PedidoService {
         Pago pago = new Pago();
         pago.setPedido(pedido);
         pago.setMetodoPago(metodoPago != null ? metodoPago : "DESCONOCIDO");
-        pago.setMonto(pedido.getTotal().multiply(BigDecimal.valueOf(100)).intValue());
+        BigDecimal totalSeguro =
+
+                pedido.getTotal()==null
+
+                        ?
+
+                        BigDecimal.ZERO
+
+                        :
+
+                        pedido.getTotal();
+
+
+        pago.setMonto(
+
+                totalSeguro
+
+                        .multiply(
+                                BigDecimal.valueOf(100)
+                        )
+
+                        .setScale(
+                                0,
+                                java.math.RoundingMode.HALF_UP
+                        )
+
+                        .intValue()
+
+        );
         pago.setEstado("COMPLETADO");
         pago.setEmail(pedido.getUsuario().getEmail());
         pago.setFechaPago(LocalDateTime.now());
@@ -255,7 +471,9 @@ public class PedidoServiceImplement implements PedidoService {
         Font fuenteNormal   = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
 
         try {
-            String urlPedido = "http://localhost:4200/mis-pedidos/" + pedido.getIdPedido();
+            String urlPedido =
+
+                    "https://marianistore-frontend.vercel.app/mis-pedidos";
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             BitMatrix bitMatrix = qrCodeWriter.encode(urlPedido, BarcodeFormat.QR_CODE, 200, 200);
             ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
@@ -311,20 +529,123 @@ public class PedidoServiceImplement implements PedidoService {
             tablaProductos.addCell(cell);
         }
 
-        for (Itempedido item : pedido.getItems()) {
-            tablaProductos.addCell(new Phrase(item.getProducto().getNombre(), fuenteNormal));
-            tablaProductos.addCell(new Phrase(String.valueOf(item.getCantidad()), fuenteNormal));
-            tablaProductos.addCell(new Phrase("S/" + String.format("%.2f", item.getPrecioUnitario()), fuenteNormal));
-            BigDecimal subtotal = item.getPrecioUnitario().multiply(BigDecimal.valueOf(item.getCantidad()));
-            tablaProductos.addCell(new Phrase("S/" + String.format("%.2f", subtotal), fuenteNormal));
+        List<Itempedido> itemsFactura =
+
+                pedido.getItems()==null
+
+                        ?
+
+                        List.of()
+
+                        :
+
+                        pedido.getItems();
+
+
+        for(Itempedido item : itemsFactura){
+
+            tablaProductos.addCell(
+                    new Phrase(
+                            item.getProducto().getNombre(),
+                            fuenteNormal
+                    )
+            );
+
+            tablaProductos.addCell(
+                    new Phrase(
+                            String.valueOf(
+                                    item.getCantidad()
+                            ),
+                            fuenteNormal
+                    )
+            );
+
+            tablaProductos.addCell(
+
+                    new Phrase(
+
+                            "S/" +
+
+                                    String.format(
+                                            "%.2f",
+                                            item.getPrecioUnitario()
+                                    ),
+
+                            fuenteNormal
+
+                    )
+
+            );
+
+            BigDecimal subtotal =
+
+                    item.getPrecioUnitario()
+
+                            .multiply(
+
+                                    BigDecimal.valueOf(
+                                            item.getCantidad()
+                                    )
+
+                            );
+
+            tablaProductos.addCell(
+
+                    new Phrase(
+
+                            "S/" +
+
+                                    String.format(
+                                            "%.2f",
+                                            subtotal
+                                    ),
+
+                            fuenteNormal
+
+                    )
+
+            );
+
         }
         document.add(tablaProductos);
 
+        BigDecimal totalSeguro =
+
+                pedido.getTotal()==null
+
+                        ?
+
+                        BigDecimal.ZERO
+
+                        :
+
+                        pedido.getTotal();
+
+
         Paragraph total = new Paragraph(
-                "\nTOTAL PAGADO: S/" + String.format("%.2f", pedido.getTotal()),
-                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, azulTech));
-        total.setAlignment(Element.ALIGN_RIGHT);
-        document.add(total);
+
+                "\nTOTAL PAGADO: S/" +
+
+                        String.format(
+                                "%.2f",
+                                totalSeguro
+                        ),
+
+                FontFactory.getFont(
+                        FontFactory.HELVETICA_BOLD,
+                        16,
+                        azulTech
+                )
+
+        );
+
+        total.setAlignment(
+                Element.ALIGN_RIGHT
+        );
+
+        document.add(
+                total
+        );
 
         try {
             document.add(new Chunk("\n\n"));
@@ -359,34 +680,129 @@ public class PedidoServiceImplement implements PedidoService {
     }
 
     private PedidoDTO mapToDTO(Pedido pedido) {
-        PedidoDTO dto = new PedidoDTO();
-        dto.setIdPedido(pedido.getIdPedido());
-        dto.setIdUsuario(pedido.getUsuario().getIdUsuario());
-        dto.setEmailUsuario(pedido.getUsuario().getEmail());
-        dto.setFechaPedido(pedido.getFechaPedido());
-        dto.setEstado(pedido.getEstado());
-        dto.setTotal(pedido.getTotal());
-        dto.setMetodoPago(pedido.getMetodoPago());
 
-        if (pedido.getDireccionEnvio() != null) {
-            dto.setIdDireccionEnvio(pedido.getDireccionEnvio().getIdDireccion());
-            dto.setDireccionEnvio(mapDireccionToDTO(pedido.getDireccionEnvio()));
+        PedidoDTO dto =
+                new PedidoDTO();
+
+        dto.setIdPedido(
+                pedido.getIdPedido()
+        );
+
+        dto.setIdUsuario(
+                pedido.getUsuario().getIdUsuario()
+        );
+
+        dto.setEmailUsuario(
+                pedido.getUsuario().getEmail()
+        );
+
+        dto.setFechaPedido(
+                pedido.getFechaPedido()
+        );
+
+        dto.setEstado(
+                pedido.getEstado()
+        );
+
+        dto.setTotal(
+                pedido.getTotal()
+        );
+
+        dto.setMetodoPago(
+                pedido.getMetodoPago()
+        );
+
+
+        if(
+                pedido.getDireccionEnvio()
+                        !=
+                        null
+        ){
+
+            dto.setIdDireccionEnvio(
+
+                    pedido.getDireccionEnvio()
+
+                            .getIdDireccion()
+
+            );
+
+            dto.setDireccionEnvio(
+
+                    mapDireccionToDTO(
+                            pedido.getDireccionEnvio()
+                    )
+
+            );
+
         }
 
-        List<ItempedidoDTO> itemDTOs = pedido.getItems().stream().map(item -> {
-            ItempedidoDTO itemDTO = new ItempedidoDTO();
-            itemDTO.setIdItemPedido(item.getIdItemPedido());
-            itemDTO.setIdPedido(pedido.getIdPedido());
-            itemDTO.setIdProducto(item.getProducto().getIdProducto());
-            itemDTO.setNombreProducto(item.getProducto().getNombre());
-            itemDTO.setCantidad(item.getCantidad());
-            itemDTO.setPrecioUnitario(item.getPrecioUnitario());
-            itemDTO.setImagen(item.getProducto().getImagen());
-            return itemDTO;
-        }).collect(Collectors.toList());
 
-        dto.setItems(itemDTOs);
+        List<ItempedidoDTO> itemDTOs =
+
+                pedido.getItems()==null
+
+                        ?
+
+                        List.of()
+
+                        :
+
+                        pedido.getItems()
+
+                                .stream()
+
+                                .map(item->{
+
+                                    ItempedidoDTO itemDTO =
+                                            new ItempedidoDTO();
+
+                                    itemDTO.setIdItemPedido(
+                                            item.getIdItemPedido()
+                                    );
+
+                                    itemDTO.setIdPedido(
+                                            pedido.getIdPedido()
+                                    );
+
+                                    itemDTO.setIdProducto(
+                                            item.getProducto()
+                                                    .getIdProducto()
+                                    );
+
+                                    itemDTO.setNombreProducto(
+                                            item.getProducto()
+                                                    .getNombre()
+                                    );
+
+                                    itemDTO.setCantidad(
+                                            item.getCantidad()
+                                    );
+
+                                    itemDTO.setPrecioUnitario(
+                                            item.getPrecioUnitario()
+                                    );
+
+                                    itemDTO.setImagen(
+                                            item.getProducto()
+                                                    .getImagen()
+                                    );
+
+                                    return itemDTO;
+
+                                })
+
+                                .collect(
+                                        Collectors.toList()
+                                );
+
+
+        dto.setItems(
+                itemDTOs
+        );
+
         return dto;
+
     }
 
     private DireccionDTO mapDireccionToDTO(Direccion direccion) {
