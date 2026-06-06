@@ -71,7 +71,7 @@ public class PagoServiceImpl implements PagoService {
                     .build();
 
             PreferencePayerRequest payer = PreferencePayerRequest.builder()
-                    .email("test_user_4643549645401751023@testuser.com")
+                    .email(request.getEmail())
                     .build();
 
             System.out.println("Ítem construido con éxito.");
