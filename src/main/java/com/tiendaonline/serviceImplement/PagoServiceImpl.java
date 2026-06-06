@@ -64,6 +64,7 @@ public class PagoServiceImpl implements PagoService {
             }
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
+                    .id(String.valueOf(request.getPedidoId()))
                     .title(request.getDescripcion())
                     .quantity(1)
                     .unitPrice(monto)
@@ -72,6 +73,7 @@ public class PagoServiceImpl implements PagoService {
 
             PreferencePayerRequest payer = PreferencePayerRequest.builder()
                     .email(request.getEmail())
+                    .name(request.getNombre())
                     .build();
 
             System.out.println("Ítem construido con éxito.");

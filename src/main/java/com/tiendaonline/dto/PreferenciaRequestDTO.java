@@ -10,4 +10,5 @@ public class PreferenciaRequestDTO {
     private String descripcion;
     private BigDecimal monto;
     private String email;
+    private String nombre;
 }
