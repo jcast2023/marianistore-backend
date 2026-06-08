@@ -8,6 +8,7 @@ import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
+
 import com.tiendaonline.dto.PreferenciaRequestDTO;
 import com.tiendaonline.dto.PreferenciaResponseDTO;
 import com.tiendaonline.model.Pago;
@@ -16,6 +17,7 @@ import com.tiendaonline.repository.PagoRepository;
 import com.tiendaonline.repository.PedidoRepository;
 import com.tiendaonline.service.EmailService;
 import com.tiendaonline.service.PagoService;
+
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,18 +46,19 @@ public class PagoServiceImpl implements PagoService {
         MercadoPagoConfig.setAccessToken(mpToken);
     }
 
+    // Solo reemplaza el método crearPreferencia si quieres (el resto queda igual)
     @Override
     public PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request) {
         System.out.println("====== ENTRANDO A CREAR PREFERENCIA ======");
-        System.out.println("Pedido ID recibido: " + request.getPedidoId());
-        System.out.println("Monto recibido: " + request.getMonto());
+        System.out.println("Pedido ID: " + request.getPedidoId());
+        System.out.println("Monto: " + request.getMonto());
+        System.out.println("Email: " + request.getEmail());
 
         if (request.getPedidoId() == null) {
             throw new IllegalArgumentException("El ID del pedido no puede ser nulo.");
         }
 
         try {
-            System.out.println("Construyendo ítem de Mercado Pago...");
             BigDecimal monto = request.getMonto();
             if (monto == null || monto.compareTo(BigDecimal.ZERO) == 0) {
                 Pedido pedido = pedidoRepository.findById(request.getPedidoId())
@@ -65,7 +68,7 @@ public class PagoServiceImpl implements PagoService {
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
                     .id(String.valueOf(request.getPedidoId()))
-                    .title(request.getDescripcion())
+                    .title(request.getDescripcion() != null ? request.getDescripcion() : "Compra MarianiStore")
                     .description("Compra en MarianiStore")
                     .quantity(1)
                     .unitPrice(monto)
@@ -78,56 +81,41 @@ public class PagoServiceImpl implements PagoService {
                     .surname(request.getApellido())
                     .build();
 
-            System.out.println("Ítem construido con éxito.");
-            System.out.println("Configurando URLs de retorno...");
-
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success("https://marianistore-frontend.vercel.app/mis-pedidos")
-                    .failure("https://marianistore-frontend.vercel.app/mis-pedidos")
-                    .pending("https://marianistore-frontend.vercel.app/mis-pedidos")
+                    .success("https://marianistore-frontend.vercel.app/mis-pedidos?status=success")
+                    .failure("https://marianistore-frontend.vercel.app/mis-pedidos?status=failure")
+                    .pending("https://marianistore-frontend.vercel.app/mis-pedidos?status=pending")
                     .build();
-
-            System.out.println("Enviando preferencia a la API de Mercado Pago...");
 
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .items(Collections.singletonList(item))
                     .payer(payer)
                     .backUrls(backUrls)
+                    .autoReturn("approved")
                     .statementDescriptor("MarianiStore")
                     .externalReference(String.valueOf(request.getPedidoId()))
                     .notificationUrl(mpDomain + "/api/pagos/webhook")
                     .build();
 
-            PreferenceClient client = new PreferenceClient();
-            Preference preference = client.create(preferenceRequest);
+            Preference preference = new PreferenceClient().create(preferenceRequest);
 
-            System.out.println("=== URLS DE MERCADO PAGO GENERADAS ===");
-            System.out.println("initPoint:  " + preference.getInitPoint());
-            System.out.println("sandboxUrl: " + preference.getSandboxInitPoint());
-            System.out.println("======================================");
+            System.out.println("=== PREFERENCIA CREADA CORRECTAMENTE ===");
+            System.out.println("Init Point: " + preference.getInitPoint());
 
             PreferenciaResponseDTO response = new PreferenciaResponseDTO();
             response.setPreferenceId(preference.getId());
             response.setInitPoint(preference.getInitPoint());
             response.setSandboxUrl(preference.getSandboxInitPoint());
-
             return response;
 
-        } catch (MPApiException apiException) {
-            System.out.println("====== ERROR DETALLADO DE MERCADO PAGO ======");
-            System.out.println("Código HTTP: " + apiException.getStatusCode());
-            if (apiException.getApiResponse() != null) {
-                System.out.println("Contenido: " + apiException.getApiResponse().getContent());
-            }
-            System.out.println("=============================================");
-            throw new RuntimeException("Error en la API de Mercado Pago: " + apiException.getMessage(), apiException);
         } catch (Exception e) {
-            System.out.println("====== ERROR GENÉRICO EN BACKEND ======");
+            System.out.println("====== ERROR AL CREAR PREFERENCIA ======");
             e.printStackTrace();
             throw new RuntimeException("Error al crear preferencia: " + e.getMessage(), e);
         }
     }
 
+    // Resto de métodos sin cambios
     @Override
     public void procesarWebhook(String paymentId) {
         System.out.println("====== PROCESANDO WEBHOOK ======");
@@ -153,12 +141,12 @@ public class PagoServiceImpl implements PagoService {
                 System.out.println("Estado no aprobado: " + payment.getStatus());
             }
 
-        } catch (MPApiException apiEx) {
-            System.out.println("Error MP API - Código: " + apiEx.getStatusCode());
-            if (apiEx.getApiResponse() != null) {
-                System.out.println("Contenido: " + apiEx.getApiResponse().getContent());
+        } catch (MPApiException | MPException apiEx) {
+            System.out.println("Error MP API - Código: " + (apiEx instanceof MPApiException ? ((MPApiException) apiEx).getStatusCode() : "N/A"));
+            if (apiEx instanceof MPApiException ex && ex.getApiResponse() != null) {
+                System.out.println("Contenido: " + ex.getApiResponse().getContent());
             }
-            if (apiEx.getStatusCode() == 404) {
+            if (apiEx instanceof MPApiException ex && ex.getStatusCode() == 404) {
                 System.out.println("⚠️ Pago no encontrado (404) - ignorando en sandbox");
                 return;
             }
