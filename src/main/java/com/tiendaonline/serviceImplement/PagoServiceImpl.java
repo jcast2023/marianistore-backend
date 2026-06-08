@@ -66,6 +66,7 @@ public class PagoServiceImpl implements PagoService {
             PreferenceItemRequest item = PreferenceItemRequest.builder()
                     .id(String.valueOf(request.getPedidoId()))
                     .title(request.getDescripcion())
+                    .description("Compra en MarianiStore")
                     .quantity(1)
                     .unitPrice(monto)
                     .currencyId("PEN")
@@ -74,6 +75,7 @@ public class PagoServiceImpl implements PagoService {
             PreferencePayerRequest payer = PreferencePayerRequest.builder()
                     .email(request.getEmail())
                     .name(request.getNombre())
+                    .surname(request.getApellido())
                     .build();
 
             System.out.println("Ítem construido con éxito.");
@@ -91,6 +93,7 @@ public class PagoServiceImpl implements PagoService {
                     .items(Collections.singletonList(item))
                     .payer(payer)
                     .backUrls(backUrls)
+                    .statementDescriptor("MarianiStore")
                     .externalReference(String.valueOf(request.getPedidoId()))
                     .notificationUrl(mpDomain + "/api/pagos/webhook")
                     .build();
