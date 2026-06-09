@@ -73,8 +73,10 @@ public class PagoServiceImpl implements PagoService {
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
                     .id(String.valueOf(request.getPedidoId()))
-                    .title(request.getDescripcion() != null ? request.getDescripcion() : "Compra MarianiStore")
-                    .description("Compra en MarianiStore")
+                    .title(request.getDescripcion() != null && !request.getDescripcion().trim().isEmpty()
+                            ? request.getDescripcion()
+                            : "Pedido #" + request.getPedidoId())
+                    .description("Artículos del Pedido #" + request.getPedidoId()) // Más dinámico para el antifraude
                     .quantity(1)
                     .unitPrice(monto)
                     .currencyId("PEN")
@@ -169,7 +171,7 @@ public class PagoServiceImpl implements PagoService {
                                 mop.getTransactionAmount(),
                                 order.getPayer() != null && order.getPayer().getId() != null ? "usuario_mp_" + order.getPayer().getId() + "@test.com" : null
                         );
-                        return; // Éxito
+                        return;
                     }
                 }
             }
