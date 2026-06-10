@@ -83,10 +83,8 @@ public class PagoServiceImpl implements PagoService {
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
                     .id(String.valueOf(request.getPedidoId()))
-                    .title(request.getDescripcion() != null && !request.getDescripcion().trim().isEmpty()
-                            ? request.getDescripcion()
-                            : "Pedido #" + request.getPedidoId())
-                    .description("Artículos del Pedido #" + request.getPedidoId())
+                    .title("Compra en MarianiStore")
+                    .description("Pedido #" + request.getPedidoId() + " - Artículos varios")  // ← Más detallada
                     .quantity(1)
                     .unitPrice(monto)
                     .currencyId("PEN")
@@ -95,7 +93,7 @@ public class PagoServiceImpl implements PagoService {
             PreferencePayerRequest payer = PreferencePayerRequest.builder()
                     .email(request.getEmail())
                     .name(request.getNombre())
-                    .surname(request.getApellido())
+                    .surname(request.getApellido() != null ? request.getApellido() : "")
                     .build();
 
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
@@ -109,9 +107,10 @@ public class PagoServiceImpl implements PagoService {
                     .payer(payer)
                     .backUrls(backUrls)
                     .autoReturn("approved")
-                    .statementDescriptor("MarianiStore")
+                    .statementDescriptor("MARIANISTORE")
                     .externalReference(String.valueOf(request.getPedidoId()))
                     .notificationUrl(mpDomain + "/api/pagos/webhook")
+                    .binaryMode(true)
                     .build();
 
             Preference preference = new PreferenceClient().create(preferenceRequest);
