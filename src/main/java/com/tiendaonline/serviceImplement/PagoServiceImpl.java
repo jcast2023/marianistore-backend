@@ -51,7 +51,6 @@ public class PagoServiceImpl implements PagoService {
         MercadoPagoConfig.setAccessToken(mpToken);
     }
 
-    // Solo reemplaza el método crearPreferencia si quieres (el resto queda igual)
     @Override
     public PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request) {
         System.out.println("====== ENTRANDO A CREAR PREFERENCIA ======");
@@ -76,7 +75,7 @@ public class PagoServiceImpl implements PagoService {
                     .title(request.getDescripcion() != null && !request.getDescripcion().trim().isEmpty()
                             ? request.getDescripcion()
                             : "Pedido #" + request.getPedidoId())
-                    .description("Artículos del Pedido #" + request.getPedidoId()) // Más dinámico para el antifraude
+                    .description("Artículos del Pedido #" + request.getPedidoId())
                     .quantity(1)
                     .unitPrice(monto)
                     .currencyId("PEN")
@@ -107,12 +106,15 @@ public class PagoServiceImpl implements PagoService {
             Preference preference = new PreferenceClient().create(preferenceRequest);
 
             System.out.println("=== PREFERENCIA CREADA CORRECTAMENTE ===");
-            System.out.println("Init Point: " + preference.getInitPoint());
+            System.out.println("Sandbox Init Point Forzado: " + preference.getSandboxInitPoint());
 
             PreferenciaResponseDTO response = new PreferenciaResponseDTO();
             response.setPreferenceId(preference.getId());
-            response.setInitPoint(preference.getInitPoint());
+
+            // ⚡ CONTROL DE CERTIFICACIÓN: Forzamos la URL de Sandbox en ambas propiedades
+            response.setInitPoint(preference.getSandboxInitPoint());
             response.setSandboxUrl(preference.getSandboxInitPoint());
+
             return response;
 
         } catch (Exception e) {
@@ -122,7 +124,6 @@ public class PagoServiceImpl implements PagoService {
         }
     }
 
-    // Resto de métodos sin cambios
     @Override
     public void procesarWebhook(String id) {
         System.out.println("====== PROCESANDO WEBHOOK ======");
@@ -133,7 +134,6 @@ public class PagoServiceImpl implements PagoService {
                 .build();
 
         try {
-            // Intentamos primero buscarlo como un Pago Directo
             try {
                 PaymentClient paymentClient = new PaymentClient();
                 Payment payment = paymentClient.get(Long.parseLong(id), requestOptions);
@@ -146,21 +146,19 @@ public class PagoServiceImpl implements PagoService {
                             payment.getTransactionAmount(),
                             payment.getPayer() != null ? payment.getPayer().getEmail() : null
                     );
-                    return; // Terminamos con éxito si era un pago aprobado
+                    return;
                 }
             } catch (MPApiException e) {
                 if (e.getStatusCode() != 404) {
-                    throw e; // Si no es un 404, es otro problema técnico y debe lanzarse
+                    throw e;
                 }
                 System.out.println("ℹ️ El ID no corresponde a un Pago individual (404). Evaluando como MerchantOrder...");
             }
 
-            // Si dio 404 o no se procesó como pago, lo tratamos como una Orden de Compra (MerchantOrder)
             MerchantOrderClient orderClient = new MerchantOrderClient();
             MerchantOrder order = orderClient.get(Long.parseLong(id), requestOptions);
             System.out.println("📦 Procesando como ORDEN. Estado de la orden: " + order.getStatus());
 
-            // Verificamos si la orden tiene pagos asociados y si está pagada por completo
             if (order.getPayments() != null && !order.getPayments().isEmpty()) {
                 for (MerchantOrderPayment mop : order.getPayments()) {
                     if ("approved".equals(mop.getStatus())) {
