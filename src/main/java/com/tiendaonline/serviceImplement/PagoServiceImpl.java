@@ -143,11 +143,14 @@ public class PagoServiceImpl implements PagoService {
                 .build();
 
         try {
+            // Intentar como Payment primero
             try {
                 PaymentClient paymentClient = new PaymentClient();
                 Payment payment = paymentClient.get(Long.parseLong(id), requestOptions);
 
                 System.out.println("💰 Procesando como PAGO. Estado: " + payment.getStatus());
+
+                // Solo procesar si está aprobado
                 if ("approved".equals(payment.getStatus())) {
                     actualizarPedido(
                             String.valueOf(payment.getId()),
@@ -155,39 +158,66 @@ public class PagoServiceImpl implements PagoService {
                             payment.getTransactionAmount(),
                             payment.getPayer() != null ? payment.getPayer().getEmail() : null
                     );
+                } else {
+                    System.out.println("⚠️ Pago no aprobado. Estado: " + payment.getStatus() + " - No se actualiza el pedido");
+                    // No hacer nada con pagos rechazados/pendientes
                     return;
                 }
+                return;
+
             } catch (MPApiException e) {
                 if (e.getStatusCode() != 404) {
-                    throw e;
+                    System.out.println("⚠️ Error API (no 404): " + e.getMessage());
+                    // No lanzar excepción, solo loguear
+                    return;
                 }
                 System.out.println("ℹ️ El ID no corresponde a un Pago individual (404). Evaluando como MerchantOrder...");
+            } catch (NumberFormatException e) {
+                System.out.println("⚠️ ID no es numérico: " + id);
+                return;
             }
 
-            MerchantOrderClient orderClient = new MerchantOrderClient();
-            MerchantOrder order = orderClient.get(Long.parseLong(id), requestOptions);
-            System.out.println("📦 Procesando como ORDEN. Estado de la orden: " + order.getStatus());
+            // Intentar como MerchantOrder
+            try {
+                MerchantOrderClient orderClient = new MerchantOrderClient();
+                MerchantOrder order = orderClient.get(Long.parseLong(id), requestOptions);
+                System.out.println("📦 Procesando como ORDEN. Estado de la orden: " + order.getStatus());
 
-            if (order.getPayments() != null && !order.getPayments().isEmpty()) {
-                for (MerchantOrderPayment mop : order.getPayments()) {
-                    if ("approved".equals(mop.getStatus())) {
-                        System.out.println("✅ Pago aprobado encontrado dentro de la orden: " + mop.getId());
-                        actualizarPedido(
-                                String.valueOf(mop.getId()),
-                                order.getExternalReference(),
-                                mop.getTransactionAmount(),
-                                order.getPayer() != null && order.getPayer().getId() != null ? "usuario_mp_" + order.getPayer().getId() + "@test.com" : null
-                        );
-                        return;
+                if (order.getPayments() != null && !order.getPayments().isEmpty()) {
+                    for (MerchantOrderPayment mop : order.getPayments()) {
+                        System.out.println("  Pago en orden - ID: " + mop.getId() + ", Estado: " + mop.getStatus());
+
+                        if ("approved".equals(mop.getStatus())) {
+                            System.out.println("✅ Pago aprobado encontrado dentro de la orden: " + mop.getId());
+                            actualizarPedido(
+                                    String.valueOf(mop.getId()),
+                                    order.getExternalReference(),
+                                    mop.getTransactionAmount(),
+                                    order.getPayer() != null && order.getPayer().getId() != null ?
+                                            "usuario_mp_" + order.getPayer().getId() + "@test.com" : null
+                            );
+                            return;
+                        }
                     }
+                    System.out.println("⚠️ Ningún pago aprobado en la orden.");
+                } else {
+                    System.out.println("⚠️ La orden no tiene pagos asociados.");
                 }
+
+            } catch (MPApiException e) {
+                System.out.println("⚠️ Error obteniendo orden (MPApiException): " + e.getMessage());
+                // No lanzar excepción
+            } catch (NumberFormatException e) {
+                System.out.println("⚠️ ID no es numérico para MerchantOrder: " + id);
+            } catch (Exception e) {
+                System.out.println("⚠️ Error procesando orden: " + e.getMessage());
             }
-            System.out.println("⚠️ La orden aún no cuenta con un pago aprobado.");
 
         } catch (Exception e) {
-            System.out.println("====== ERROR PROCESANDO WEBHOOK ======");
+            System.out.println("====== ERROR GENERAL EN WEBHOOK ======");
+            System.out.println("Error: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Error procesando webhook: " + e.getMessage(), e);
+            // NO lanzar RuntimeException para evitar que MP reintente innecesariamente
         }
     }
 
