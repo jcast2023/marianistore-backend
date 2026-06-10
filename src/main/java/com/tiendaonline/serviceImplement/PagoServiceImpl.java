@@ -48,6 +48,10 @@ public class PagoServiceImpl implements PagoService {
 
     @PostConstruct
     public void initMP() {
+        System.out.println("=== VERIFICANDO TOKEN ===");
+        System.out.println("Token (primeros 15 chars): " + (mpToken != null ? mpToken.substring(0, Math.min(15, mpToken.length())) : "null"));
+        System.out.println("Empieza con APP_USR?: " + (mpToken != null && mpToken.startsWith("APP_USR-")));
+        System.out.println("Empieza con TEST?: " + (mpToken != null && mpToken.startsWith("TEST-")));
         MercadoPagoConfig.setAccessToken(mpToken);
     }
 
@@ -67,8 +71,15 @@ public class PagoServiceImpl implements PagoService {
             if (monto == null || monto.compareTo(BigDecimal.ZERO) == 0) {
                 Pedido pedido = pedidoRepository.findById(request.getPedidoId())
                         .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-                monto = new BigDecimal(String.valueOf(pedido.getTotal()));
+                monto = pedido.getTotal();
+                System.out.println("Monto recuperado del pedido: " + monto);
             }
+
+            // Validar que el monto sea mayor a 0
+            if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("El monto del pedido es inválido: " + monto);
+            }
+
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
                     .id(String.valueOf(request.getPedidoId()))
@@ -106,12 +117,10 @@ public class PagoServiceImpl implements PagoService {
             Preference preference = new PreferenceClient().create(preferenceRequest);
 
             System.out.println("=== PREFERENCIA CREADA CORRECTAMENTE ===");
-            System.out.println("Sandbox Init Point Forzado: " + preference.getSandboxInitPoint());
+            System.out.println("Init Point (Producción): " + preference.getInitPoint());
 
             PreferenciaResponseDTO response = new PreferenciaResponseDTO();
             response.setPreferenceId(preference.getId());
-
-
             response.setInitPoint(preference.getInitPoint());
             response.setSandboxUrl(null);
 
@@ -235,4 +244,6 @@ public class PagoServiceImpl implements PagoService {
             throw new RuntimeException("Error actualizando pedido: " + e.getMessage(), e);
         }
     }
+
+
 }
