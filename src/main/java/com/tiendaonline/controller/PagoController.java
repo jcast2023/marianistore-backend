@@ -49,14 +49,14 @@ public class PagoController {
         String topicFinal = type;
         String idFinal = id;
 
-        // Si los parámetros de la URL son nulos, buscamos dentro del Body (Estructura de producción)
+// Si los parámetros de la URL son nulos, buscamos dentro del Body (Estructura de producción)
         if (body != null) {
-            // 1. Corregido: Usar String.valueOf en lugar de cast directo (String) para el topic
+// 1. Corregido: Usar String.valueOf en lugar de cast directo (String) para el topic
             if (body.containsKey("topic") && topicFinal == null) {
                 topicFinal = String.valueOf(body.get("topic"));
             }
 
-            // 2. Extraer ID del resource de manera segura
+// 2. Extraer ID del resource de manera segura
             if (body.containsKey("resource") && idFinal == null) {
                 String resource = String.valueOf(body.get("resource"));
                 if (resource != null && resource.contains("/")) {
@@ -64,7 +64,7 @@ public class PagoController {
                 }
             }
 
-            // 3. Estructura alternativa para webhooks modernos V2 de tipo 'payment'
+// 3. Estructura alternativa para webhooks modernos V2 de tipo 'payment'
             if (body.containsKey("action") && "payment.created".equals(String.valueOf(body.get("action")))) {
                 topicFinal = "payment";
                 if (body.containsKey("data") && body.get("data") instanceof Map) {
@@ -78,20 +78,20 @@ public class PagoController {
 
         System.out.println("🔍 Procesando final -> Topic: " + topicFinal + " | ID: " + idFinal);
 
-        // Validamos que el ID no sea "null" como texto producto del String.valueOf()
+// Validamos que el ID no sea "null" como texto producto del String.valueOf()
         if (idFinal != null && !idFinal.isEmpty() && !"null".equalsIgnoreCase(idFinal)
                 && ("merchant_order".equals(topicFinal) || "payment".equals(topicFinal))) {
             try {
                 pagoService.procesarWebhook(idFinal);
             } catch (Exception e) {
                 System.err.println("Error ejecutando el servicio de pago: " + e.getMessage());
-                // Importante: Devolvemos 200 para que MP no reintente infinitamente si es un error de código
+// Importante: Devolvemos 200 para que MP no reintente infinitamente si es un error de código
             }
         } else {
             System.out.println("⚠️ Notificación ignorada o formato no soportado.");
         }
 
-        // Siempre responder 200 OK a Mercado Pago rápido para evitar timeouts
+// Siempre responder 200 OK a Mercado Pago rápido para evitar timeouts
         return ResponseEntity.ok().build();
     }
 

@@ -111,7 +111,7 @@ public class PagoServiceImpl implements PagoService {
             PreferenciaResponseDTO response = new PreferenciaResponseDTO();
             response.setPreferenceId(preference.getId());
 
-            // ⚡ CONTROL DE CERTIFICACIÓN: Forzamos la URL de Sandbox en ambas propiedades
+// ⚡ CONTROL DE CERTIFICACIÓN: Forzamos la URL de Sandbox en ambas propiedades
             response.setInitPoint(preference.getSandboxInitPoint());
             response.setSandboxUrl(preference.getSandboxInitPoint());
 
