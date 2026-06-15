@@ -75,16 +75,18 @@ public class PagoServiceImpl implements PagoService {
                 System.out.println("Monto recuperado del pedido: " + monto);
             }
 
-            // Validar que el monto sea mayor a 0
             if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new RuntimeException("El monto del pedido es inválido: " + monto);
             }
 
+            // SOLUCIÓN AL BLOQUEO: Generar una referencia única por cada intento de pago.
+            // Ejemplo resultado: "176-1718416800" (ID del pedido + timestamp actual)
+            String intentoPagoUnicoId = request.getPedidoId() + "-" + System.currentTimeMillis();
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
-                    .id(String.valueOf(request.getPedidoId()))
+                    .id(intentoPagoUnicoId) // ← Identificador único para este intento
                     .title("Compra en MarianiStore")
-                    .description("Pedido #" + request.getPedidoId() + " - Artículos varios")  // ← Más detallada
+                    .description("Pedido #" + request.getPedidoId() + " - Artículos varios")
                     .quantity(1)
                     .unitPrice(monto)
                     .currencyId("PEN")
@@ -108,9 +110,9 @@ public class PagoServiceImpl implements PagoService {
                     .backUrls(backUrls)
                     .autoReturn("approved")
                     .statementDescriptor("MARIANISTORE")
-                    .externalReference(String.valueOf(request.getPedidoId()))
+                    .externalReference(intentoPagoUnicoId) // ← Clave para evitar el error de duplicidad
                     .notificationUrl(mpDomain + "/api/pagos/webhook")
-                    .binaryMode(true)
+                    .binaryMode(false) // ← Recomendado cambiarlo a false en producción para que el motor antifraude pueda mandar a "mediación/review" en vez de rechazar en seco
                     .build();
 
             Preference preference = new PreferenceClient().create(preferenceRequest);
@@ -232,12 +234,22 @@ public class PagoServiceImpl implements PagoService {
     private void actualizarPedido(String paymentId, String externalReference,
                                   BigDecimal monto, String email) {
         try {
-            Integer pedidoId = Integer.parseInt(externalReference);
-            System.out.println("Actualizando Pedido ID: " + pedidoId);
+            if (externalReference == null || externalReference.isEmpty()) {
+                throw new IllegalArgumentException("External Reference vacía o nula.");
+            }
+
+            // Extraer el ID real del pedido ignorando el timestamp posterior al guión
+            String realPedidoIdStr = externalReference.contains("-")
+                    ? externalReference.split("-")[0]
+                    : externalReference;
+
+            Integer pedidoId = Integer.parseInt(realPedidoIdStr);
+            System.out.println("Actualizando Pedido ID Real: " + pedidoId);
 
             Pedido pedido = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + pedidoId));
 
+            // ... El resto de tu lógica de actualización de base de datos se mantiene EXACTAMENTE IGUAL ...
             pedido.setEstado("PAGADO");
             pedido.setMetodoPago("TARJETA_CREDITO");
             pedidoRepository.save(pedido);
@@ -273,6 +285,5 @@ public class PagoServiceImpl implements PagoService {
             throw new RuntimeException("Error actualizando pedido: " + e.getMessage(), e);
         }
     }
-
 
 }
