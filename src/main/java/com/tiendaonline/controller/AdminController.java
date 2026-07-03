@@ -1,4 +1,4 @@
-// src/main/java/com/techshop/controller/AdminController.java
+
 package com.tiendaonline.controller;
 
 
