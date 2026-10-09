@@ -52,11 +52,10 @@ public class PagoServiceImpl implements PagoService {
     }
 
     @Override
-    public PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request) {
+    public PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request, String emailAutenticado) {
         System.out.println("====== ENTRANDO A CREAR PREFERENCIA ======");
         System.out.println("Pedido ID: " + request.getPedidoId());
-        System.out.println("Monto: " + request.getMonto());
-        System.out.println("Email: " + request.getEmail());
+        System.out.println("Email autenticado: " + emailAutenticado);
 
         if (request.getPedidoId() == null) {
             throw new IllegalArgumentException("El ID del pedido no puede ser nulo.");
@@ -65,6 +64,23 @@ public class PagoServiceImpl implements PagoService {
         try {
             Pedido pedido = pedidoRepository.findById(request.getPedidoId())
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+            // ✅ VALIDACIÓN DE PROPIEDAD: el pedido debe pertenecer al usuario autenticado
+            if (emailAutenticado == null || emailAutenticado.isEmpty()) {
+                throw new RuntimeException("No se pudo verificar la identidad del usuario");
+            }
+            if (pedido.getUsuario() == null) {
+                throw new RuntimeException("El pedido no tiene usuario asociado");
+            }
+            boolean esPropietario = emailAutenticado.equalsIgnoreCase(pedido.getUsuario().getEmail());
+            if (!esPropietario) {
+                System.out.println("⚠️ RECHAZADO: el pedido " + request.getPedidoId() +
+                        " no pertenece al usuario " + emailAutenticado);
+                throw new RuntimeException("No tienes permiso para pagar un pedido que no es tuyo");
+            }
+
+            System.out.println("✅ Propiedad validada: pedido " + request.getPedidoId() +
+                    " pertenece a " + emailAutenticado);
 
             BigDecimal monto = pedido.getTotal();
 

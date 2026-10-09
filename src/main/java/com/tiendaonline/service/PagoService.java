@@ -6,7 +6,7 @@ import com.tiendaonline.dto.PreferenciaResponseDTO;
 import java.math.BigDecimal;
 
 public interface PagoService {
-    PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request);
+    PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request, String emailAutenticado);
     void procesarWebhook(String paymentId);
     void procesarWebhookConDatos(String paymentId, String externalReference,
                                  BigDecimal monto, String email);

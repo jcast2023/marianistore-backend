@@ -5,6 +5,7 @@ import com.tiendaonline.dto.PreferenciaResponseDTO;
 import com.tiendaonline.service.PagoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -18,9 +19,12 @@ public class PagoController {
     private final PagoService pagoService;
 
     @PostMapping("/preferencia")
-    public ResponseEntity<?> crearPreferencia(@RequestBody PreferenciaRequestDTO request) {
+    public ResponseEntity<?> crearPreferencia(
+            @RequestBody PreferenciaRequestDTO request,
+            Authentication authentication) {
         try {
-            PreferenciaResponseDTO response = pagoService.crearPreferencia(request);
+            String emailAutenticado = authentication != null ? authentication.getName() : null;
+            PreferenciaResponseDTO response = pagoService.crearPreferencia(request, emailAutenticado);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             e.printStackTrace();
