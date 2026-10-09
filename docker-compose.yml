@@ -1,16 +1,15 @@
 version: '3.8'
 
 services:
-  # Base de datos MySQL
   mysql:
     image: mysql:8.0
     container_name: techshop-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: techshop_db
-      MYSQL_USER: techshop
-      MYSQL_PASSWORD: techshop123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-techshop_db}
+      MYSQL_USER: ${MYSQL_USER:-techshop}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3307:3306"
     volumes:
@@ -22,7 +21,6 @@ services:
       timeout: 20s
       retries: 10
 
-  # Backend Spring Boot
   backend:
     build:
       context: .
@@ -33,11 +31,11 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/techshop_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: techshop
-      SPRING_DATASOURCE_PASSWORD: techshop123
-      JWT_SECRET: TechShop2024SecretKeyForJWTTokenGenerationInDocker
-      JWT_EXPIRATION: 86400000
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-techshop_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-techshop}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400}
     depends_on:
       mysql:
         condition: service_healthy
