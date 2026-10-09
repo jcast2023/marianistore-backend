@@ -242,6 +242,27 @@ public class PagoServiceImpl implements PagoService {
             Pedido pedido = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + pedidoId));
 
+// ✅ VALIDACIÓN DE MONTO: el pago debe coincidir con el total del pedido
+            if (monto == null) {
+                throw new RuntimeException("El monto del pago es nulo, no se puede validar");
+            }
+
+            BigDecimal totalPedido = pedido.getTotal();
+            if (totalPedido == null) {
+                throw new RuntimeException("El pedido no tiene total definido");
+            }
+
+// Tolerancia de 1 centavo para evitar diferencias por redondeo
+            BigDecimal diferencia = monto.subtract(totalPedido).abs();
+            if (diferencia.compareTo(new BigDecimal("0.01")) > 0) {
+                System.out.println("⚠️ RECHAZADO: monto del pago (" + monto +
+                        ") no coincide con total del pedido (" + totalPedido + ")");
+                throw new RuntimeException(
+                        "El monto del pago (" + monto + ") no coincide con el total del pedido (" + totalPedido + ")");
+            }
+
+            System.out.println("✅ Monto validado: " + monto + " == " + totalPedido);
+
             // ... El resto de tu lógica de actualización de base de datos se mantiene EXACTAMENTE IGUAL ...
             pedido.setEstado("PAGADO");
             pedido.setMetodoPago("TARJETA_CREDITO");
