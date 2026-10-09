@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import com.tiendaonline.dto.CarritoDTO;
 import com.tiendaonline.dto.ItemcarritoDTO;
 import com.tiendaonline.service.CarritoService;
+import com.tiendaonline.service.UsuarioService;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/carritos")
@@ -18,9 +20,11 @@ import com.tiendaonline.service.CarritoService;
 public class CarritoController {
 
     private final CarritoService carritoService;
+    private final UsuarioService usuarioService;
 
-    public CarritoController(CarritoService carritoService) {
+    public CarritoController(CarritoService carritoService, UsuarioService usuarioService) {
         this.carritoService = carritoService;
+        this.usuarioService = usuarioService;
     }
 
     // ── CRUD básico ───────────────────────────────────────────────
@@ -60,14 +64,20 @@ public class CarritoController {
     /** Obtiene o crea el carrito activo del usuario */
     @GetMapping("/usuario/{idUsuario}/activo")
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
-    public ResponseEntity<CarritoDTO> obtenerCarritoActivo(@PathVariable Integer idUsuario) {
+    public ResponseEntity<CarritoDTO> obtenerCarritoActivo(
+            @PathVariable Integer idUsuario,
+            Authentication authentication) {
+        validarPropiedad(idUsuario, authentication);
         return ResponseEntity.ok(carritoService.obtenerOCrearCarritoActivo(idUsuario));
     }
 
     /** Lista los items del carrito activo del usuario */
     @GetMapping("/usuario/{idUsuario}/items")
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
-    public ResponseEntity<List<ItemcarritoDTO>> obtenerItems(@PathVariable Integer idUsuario) {
+    public ResponseEntity<List<ItemcarritoDTO>> obtenerItems(
+            @PathVariable Integer idUsuario,
+            Authentication authentication) {
+        validarPropiedad(idUsuario, authentication);
         return ResponseEntity.ok(carritoService.obtenerItemsCarrito(idUsuario));
     }
 
@@ -76,7 +86,9 @@ public class CarritoController {
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<ItemcarritoDTO> agregarItem(
             @PathVariable Integer idUsuario,
-            @RequestBody ItemcarritoDTO itemDTO) {
+            @RequestBody ItemcarritoDTO itemDTO,
+            Authentication authentication) {
+        validarPropiedad(idUsuario, authentication);
         ItemcarritoDTO creado = carritoService.agregarItem(
                 idUsuario, itemDTO.getIdProducto(), itemDTO.getCantidad());
         return ResponseEntity.status(201).body(creado);
@@ -103,7 +115,10 @@ public class CarritoController {
     /** Vacía todo el carrito del usuario */
     @DeleteMapping("/usuario/{idUsuario}/vaciar")
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
-    public ResponseEntity<Void> vaciarCarrito(@PathVariable Integer idUsuario) {
+    public ResponseEntity<Void> vaciarCarrito(
+            @PathVariable Integer idUsuario,
+            Authentication authentication) {
+        validarPropiedad(idUsuario, authentication);
         carritoService.vaciarCarrito(idUsuario);
         return ResponseEntity.noContent().build();
     }
@@ -113,8 +128,23 @@ public class CarritoController {
     @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<Void> sincronizar(
             @PathVariable Integer idUsuario,
-            @RequestBody List<ItemcarritoDTO> items) {
+            @RequestBody List<ItemcarritoDTO> items,
+            Authentication authentication) {
+        validarPropiedad(idUsuario, authentication);
         carritoService.sincronizarDesdeLocalStorage(idUsuario, items);
         return ResponseEntity.ok().build();
+    }
+
+    private void validarPropiedad(Integer idUsuario, Authentication authentication) {
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ADMIN") || a.getAuthority().equals("ROLE_ADMIN"));
+        if (isAdmin) return;
+
+        String emailAuth = authentication.getName();
+        var usuarioOpt = usuarioService.obtenerPorEmail(emailAuth);
+        if (usuarioOpt.isEmpty() || !usuarioOpt.get().getIdUsuario().equals(idUsuario)) {
+            throw new AccessDeniedException(
+                    "No tienes permiso para acceder a los datos de otro usuario");
+        }
     }
 }

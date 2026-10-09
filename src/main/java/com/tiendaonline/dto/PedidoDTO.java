@@ -28,6 +28,7 @@ public class PedidoDTO {
     
     private String metodoPago;
 
+    @jakarta.validation.Valid
     private List<ItempedidoDTO> items = new ArrayList<>();
     
     @NotNull(message = "La dirección de envío es obligatoria")
