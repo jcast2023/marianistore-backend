@@ -23,8 +23,8 @@ public class Pago {
     @Column(nullable = false)
     private Integer monto;
 
-    @Column
-    private String paymentId; // ID del pago devuelto por Mercado Pago
+    @Column(unique = true)
+    private String paymentId; // ID del pago devuelto por Mercado Pago (único por pago)
 
     @Column
     private String email;

@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Optional;
 
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
@@ -279,10 +280,16 @@ public class PagoServiceImpl implements PagoService {
 
             System.out.println("✅ Monto validado: " + monto + " == " + totalPedido);
 
-            // ... El resto de tu lógica de actualización de base de datos se mantiene EXACTAMENTE IGUAL ...
+            Optional<Pago> pagoExistente = pagoRepository.findByPaymentId(paymentId);
+            if (pagoExistente.isPresent()) {
+                System.out.println("⚠️ Pago ya procesado previamente (paymentId=" + paymentId + "). Ignorando.");
+                return;
+            }
+
             pedido.setEstado("PAGADO");
             pedido.setMetodoPago("TARJETA_CREDITO");
             pedidoRepository.save(pedido);
+
 
             Pago pago = new Pago();
             pago.setPedido(pedido);
