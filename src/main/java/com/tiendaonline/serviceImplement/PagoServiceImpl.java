@@ -63,13 +63,10 @@ public class PagoServiceImpl implements PagoService {
         }
 
         try {
-            BigDecimal monto = request.getMonto();
-            if (monto == null || monto.compareTo(BigDecimal.ZERO) == 0) {
-                Pedido pedido = pedidoRepository.findById(request.getPedidoId())
-                        .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-                monto = pedido.getTotal();
-                System.out.println("Monto recuperado del pedido: " + monto);
-            }
+            Pedido pedido = pedidoRepository.findById(request.getPedidoId())
+                    .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+            BigDecimal monto = pedido.getTotal();
 
             if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new RuntimeException("El monto del pedido es inválido: " + monto);
