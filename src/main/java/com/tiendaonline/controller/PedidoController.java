@@ -97,7 +97,7 @@ public class PedidoController {
     }
 
     @PutMapping("/{id}/pagar")
-    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PedidoDTO> pagarPedido(
             @PathVariable Integer id,
             @RequestParam(required = false) String metodoPago,
