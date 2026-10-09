@@ -48,10 +48,6 @@ public class PagoServiceImpl implements PagoService {
 
     @PostConstruct
     public void initMP() {
-        System.out.println("=== VERIFICANDO TOKEN ===");
-        System.out.println("Token (primeros 15 chars): " + (mpToken != null ? mpToken.substring(0, Math.min(15, mpToken.length())) : "null"));
-        System.out.println("Empieza con APP_USR?: " + (mpToken != null && mpToken.startsWith("APP_USR-")));
-        System.out.println("Empieza con TEST?: " + (mpToken != null && mpToken.startsWith("TEST-")));
         MercadoPagoConfig.setAccessToken(mpToken);
     }
 

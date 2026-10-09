@@ -56,9 +56,7 @@ public class AuthController {
         nuevoUsuario.setPassword(passwordEncoder.encode(nuevoUsuario.getPassword()));
         
         // ASIGNACIÓN OBLIGATORIA DEL ROL
-        if(nuevoUsuario.getRoles().isEmpty()){
-            nuevoUsuario.getRoles().add(Usuario.Role.USER);
-        }
+        nuevoUsuario.setRoles(new java.util.ArrayList<>(java.util.List.of(Usuario.Role.USER)));
 
         usuarioRepository.save(nuevoUsuario);
         return ResponseEntity.ok(Map.of("message", "Usuario creado con éxito"));

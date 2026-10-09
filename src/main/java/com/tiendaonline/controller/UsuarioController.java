@@ -24,6 +24,7 @@ public class UsuarioController {
 
     
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public List<UsuarioDTO> listarUsuarios() {
         return usuarioService.listarUsuarios();
     }
@@ -87,7 +88,7 @@ public class UsuarioController {
         
         boolean esMismoUsuario = usuario.getEmail().equals(emailAuth);
         boolean esAdmin = auth.getAuthorities().stream()
-                              .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                              .anyMatch(a -> a.getAuthority().equals("ADMIN") || a.getAuthority().equals("ROLE_ADMIN"));
 
         if (!esMismoUsuario && !esAdmin) {
             

@@ -56,5 +56,5 @@ public class Pedido {
     
     @ManyToOne
     @JoinColumn(name = "direccion_envio_id")   // ← relación con Direccion
-    private Direccion direccionEnvio;;
+    private Direccion direccionEnvio;
 }
