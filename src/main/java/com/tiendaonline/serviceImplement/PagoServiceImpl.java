@@ -20,6 +20,7 @@ import com.tiendaonline.service.PagoService;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,7 @@ import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PagoServiceImpl implements PagoService {
@@ -54,9 +56,9 @@ public class PagoServiceImpl implements PagoService {
 
     @Override
     public PreferenciaResponseDTO crearPreferencia(PreferenciaRequestDTO request, String emailAutenticado) {
-        System.out.println("====== ENTRANDO A CREAR PREFERENCIA ======");
-        System.out.println("Pedido ID: " + request.getPedidoId());
-        System.out.println("Email autenticado: " + emailAutenticado);
+        log.info("====== ENTRANDO A CREAR PREFERENCIA ======");
+        log.info("Pedido ID: {}", request.getPedidoId());
+        log.info("Email autenticado: {}", emailAutenticado);
 
         if (request.getPedidoId() == null) {
             throw new IllegalArgumentException("El ID del pedido no puede ser nulo.");
@@ -75,13 +77,13 @@ public class PagoServiceImpl implements PagoService {
             }
             boolean esPropietario = emailAutenticado.equalsIgnoreCase(pedido.getUsuario().getEmail());
             if (!esPropietario) {
-                System.out.println("⚠️ RECHAZADO: el pedido " + request.getPedidoId() +
-                        " no pertenece al usuario " + emailAutenticado);
+                log.warn("RECHAZADO: el pedido {} no pertenece al usuario {}",
+                        request.getPedidoId(), emailAutenticado);
                 throw new RuntimeException("No tienes permiso para pagar un pedido que no es tuyo");
             }
 
-            System.out.println("✅ Propiedad validada: pedido " + request.getPedidoId() +
-                    " pertenece a " + emailAutenticado);
+            log.info("Propiedad validada: pedido {} pertenece a {}",
+                    request.getPedidoId(), emailAutenticado);
 
             BigDecimal monto = pedido.getTotal();
 
@@ -94,7 +96,7 @@ public class PagoServiceImpl implements PagoService {
             String intentoPagoUnicoId = request.getPedidoId() + "-" + System.currentTimeMillis();
 
             PreferenceItemRequest item = PreferenceItemRequest.builder()
-                    .id(intentoPagoUnicoId) // ← Identificador único para este intento
+                    .id(intentoPagoUnicoId)
                     .title("Compra en MarianiStore")
                     .description("Pedido #" + request.getPedidoId() + " - Artículos varios")
                     .quantity(1)
@@ -120,15 +122,15 @@ public class PagoServiceImpl implements PagoService {
                     .backUrls(backUrls)
                     .autoReturn("approved")
                     .statementDescriptor("MARIANISTORE")
-                    .externalReference(intentoPagoUnicoId) // ← Clave para evitar el error de duplicidad
+                    .externalReference(intentoPagoUnicoId)
                     .notificationUrl(mpDomain + "/api/pagos/webhook")
-                    .binaryMode(false) // ← Recomendado cambiarlo a false en producción para que el motor antifraude pueda mandar a "mediación/review" en vez de rechazar en seco
+                    .binaryMode(false)
                     .build();
 
             Preference preference = new PreferenceClient().create(preferenceRequest);
 
-            System.out.println("=== PREFERENCIA CREADA CORRECTAMENTE ===");
-            System.out.println("Init Point (Producción): " + preference.getInitPoint());
+            log.info("=== PREFERENCIA CREADA CORRECTAMENTE ===");
+            log.info("Init Point (Producción): {}", preference.getInitPoint());
 
             PreferenciaResponseDTO response = new PreferenciaResponseDTO();
             response.setPreferenceId(preference.getId());
@@ -138,16 +140,15 @@ public class PagoServiceImpl implements PagoService {
             return response;
 
         } catch (Exception e) {
-            System.out.println("====== ERROR AL CREAR PREFERENCIA ======");
-            e.printStackTrace();
+            log.error("Error al crear preferencia", e);
             throw new RuntimeException("Error al crear preferencia: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void procesarWebhook(String id) {
-        System.out.println("====== PROCESANDO WEBHOOK ======");
-        System.out.println("ID recibido: " + id);
+        log.info("====== PROCESANDO WEBHOOK ======");
+        log.info("ID recibido: {}", id);
 
         MPRequestOptions requestOptions = MPRequestOptions.builder()
                 .accessToken(mpToken)
@@ -159,7 +160,7 @@ public class PagoServiceImpl implements PagoService {
                 PaymentClient paymentClient = new PaymentClient();
                 Payment payment = paymentClient.get(Long.parseLong(id), requestOptions);
 
-                System.out.println("💰 Procesando como PAGO. Estado: " + payment.getStatus());
+                log.info("Procesando como PAGO. Estado: {}", payment.getStatus());
 
                 // Solo procesar si está aprobado
                 if ("approved".equals(payment.getStatus())) {
@@ -170,21 +171,19 @@ public class PagoServiceImpl implements PagoService {
                             payment.getPayer() != null ? payment.getPayer().getEmail() : null
                     );
                 } else {
-                    System.out.println("⚠️ Pago no aprobado. Estado: " + payment.getStatus() + " - No se actualiza el pedido");
-                    // No hacer nada con pagos rechazados/pendientes
+                    log.warn("Pago no aprobado. Estado: {} - No se actualiza el pedido", payment.getStatus());
                     return;
                 }
                 return;
 
             } catch (MPApiException e) {
                 if (e.getStatusCode() != 404) {
-                    System.out.println("⚠️ Error API (no 404): " + e.getMessage());
-                    // No lanzar excepción, solo loguear
+                    log.warn("Error API (no 404): {}", e.getMessage());
                     return;
                 }
-                System.out.println("ℹ️ El ID no corresponde a un Pago individual (404). Evaluando como MerchantOrder...");
+                log.info("El ID no corresponde a un Pago individual (404). Evaluando como MerchantOrder...");
             } catch (NumberFormatException e) {
-                System.out.println("⚠️ ID no es numérico: " + id);
+                log.warn("ID no es numérico: {}", id);
                 return;
             }
 
@@ -192,14 +191,14 @@ public class PagoServiceImpl implements PagoService {
             try {
                 MerchantOrderClient orderClient = new MerchantOrderClient();
                 MerchantOrder order = orderClient.get(Long.parseLong(id), requestOptions);
-                System.out.println("📦 Procesando como ORDEN. Estado de la orden: " + order.getStatus());
+                log.info("Procesando como ORDEN. Estado de la orden: {}", order.getStatus());
 
                 if (order.getPayments() != null && !order.getPayments().isEmpty()) {
                     for (MerchantOrderPayment mop : order.getPayments()) {
-                        System.out.println("  Pago en orden - ID: " + mop.getId() + ", Estado: " + mop.getStatus());
+                        log.info("  Pago en orden - ID: {}, Estado: {}", mop.getId(), mop.getStatus());
 
                         if ("approved".equals(mop.getStatus())) {
-                            System.out.println("✅ Pago aprobado encontrado dentro de la orden: " + mop.getId());
+                            log.info("Pago aprobado encontrado dentro de la orden: {}", mop.getId());
                             actualizarPedido(
                                     String.valueOf(mop.getId()),
                                     order.getExternalReference(),
@@ -210,24 +209,22 @@ public class PagoServiceImpl implements PagoService {
                             return;
                         }
                     }
-                    System.out.println("⚠️ Ningún pago aprobado en la orden.");
+                    log.warn("Ningún pago aprobado en la orden.");
                 } else {
-                    System.out.println("⚠️ La orden no tiene pagos asociados.");
+                    log.warn("La orden no tiene pagos asociados.");
                 }
 
             } catch (MPApiException e) {
-                System.out.println("⚠️ Error obteniendo orden (MPApiException): " + e.getMessage());
-                // No lanzar excepción
+                log.warn("Error obteniendo orden (MPApiException): {}", e.getMessage());
             } catch (NumberFormatException e) {
-                System.out.println("⚠️ ID no es numérico para MerchantOrder: " + id);
+                log.warn("ID no es numérico para MerchantOrder: {}", id);
             } catch (Exception e) {
-                System.out.println("⚠️ Error procesando orden: " + e.getMessage());
+                log.warn("Error procesando orden: {}", e.getMessage());
             }
 
         } catch (Exception e) {
-            System.out.println("====== ERROR GENERAL EN WEBHOOK ======");
-            System.out.println("Error: " + e.getMessage());
-            e.printStackTrace();
+            log.error("====== ERROR GENERAL EN WEBHOOK ======");
+            log.error("Error: {}", e.getMessage(), e);
             // NO lanzar RuntimeException para evitar que MP reintente innecesariamente
         }
     }
@@ -235,9 +232,9 @@ public class PagoServiceImpl implements PagoService {
     @Override
     public void procesarWebhookConDatos(String paymentId, String externalReference,
                                         BigDecimal monto, String email) {
-        System.out.println("====== PROCESANDO PAGO DIRECTO DESDE WEBHOOK ======");
-        System.out.println("Payment ID: " + paymentId);
-        System.out.println("External Reference (Pedido ID): " + externalReference);
+        log.info("====== PROCESANDO PAGO DIRECTO DESDE WEBHOOK ======");
+        log.info("Payment ID: {}", paymentId);
+        log.info("External Reference (Pedido ID): {}", externalReference);
         actualizarPedido(paymentId, externalReference, monto, email);
     }
 
@@ -254,12 +251,12 @@ public class PagoServiceImpl implements PagoService {
                     : externalReference;
 
             Integer pedidoId = Integer.parseInt(realPedidoIdStr);
-            System.out.println("Actualizando Pedido ID Real: " + pedidoId);
+            log.info("Actualizando Pedido ID Real: {}", pedidoId);
 
             Pedido pedido = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + pedidoId));
 
-// ✅ VALIDACIÓN DE MONTO: el pago debe coincidir con el total del pedido
+            // ✅ VALIDACIÓN DE MONTO: el pago debe coincidir con el total del pedido
             if (monto == null) {
                 throw new RuntimeException("El monto del pago es nulo, no se puede validar");
             }
@@ -269,27 +266,26 @@ public class PagoServiceImpl implements PagoService {
                 throw new RuntimeException("El pedido no tiene total definido");
             }
 
-// Tolerancia de 1 centavo para evitar diferencias por redondeo
+            // Tolerancia de 1 centavo para evitar diferencias por redondeo
             BigDecimal diferencia = monto.subtract(totalPedido).abs();
             if (diferencia.compareTo(new BigDecimal("0.01")) > 0) {
-                System.out.println("⚠️ RECHAZADO: monto del pago (" + monto +
-                        ") no coincide con total del pedido (" + totalPedido + ")");
+                log.warn("RECHAZADO: monto del pago ({}) no coincide con total del pedido ({})",
+                        monto, totalPedido);
                 throw new RuntimeException(
                         "El monto del pago (" + monto + ") no coincide con el total del pedido (" + totalPedido + ")");
             }
 
-            System.out.println("✅ Monto validado: " + monto + " == " + totalPedido);
+            log.info("Monto validado: {} == {}", monto, totalPedido);
 
             Optional<Pago> pagoExistente = pagoRepository.findByPaymentId(paymentId);
             if (pagoExistente.isPresent()) {
-                System.out.println("⚠️ Pago ya procesado previamente (paymentId=" + paymentId + "). Ignorando.");
+                log.warn("Pago ya procesado previamente (paymentId={}). Ignorando.", paymentId);
                 return;
             }
 
             pedido.setEstado("PAGADO");
             pedido.setMetodoPago("TARJETA_CREDITO");
             pedidoRepository.save(pedido);
-
 
             Pago pago = new Pago();
             pago.setPedido(pedido);
@@ -301,26 +297,24 @@ public class PagoServiceImpl implements PagoService {
             pago.setFechaPago(LocalDateTime.now());
             pagoRepository.save(pago);
 
-            System.out.println("✅ Pedido y Pago actualizados en BD correctamente.");
+            log.info("Pedido y Pago actualizados en BD correctamente.");
 
             try {
-                System.out.println("Enviando correo a: " + pedido.getUsuario().getEmail());
+                log.info("Enviando correo a: {}", pedido.getUsuario().getEmail());
                 emailService.enviarCorreoConfirmacion(
                         pedido.getUsuario().getEmail(),
                         pedido.getUsuario().getNombre(),
                         pedido.getIdPedido(),
                         monto.doubleValue()
                 );
-                System.out.println("✅ Correo enviado con éxito.");
+                log.info("Correo enviado con éxito.");
             } catch (Exception e) {
-                System.err.println("⚠️ Correo falló: " + e.getMessage());
+                log.warn("Correo falló: {}", e.getMessage());
             }
 
         } catch (Exception e) {
-            System.out.println("====== ERROR ACTUALIZANDO PEDIDO ======");
-            e.printStackTrace();
+            log.error("Error actualizando pedido", e);
             throw new RuntimeException("Error actualizando pedido: " + e.getMessage(), e);
         }
     }
-
 }
