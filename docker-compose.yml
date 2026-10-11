@@ -3,19 +3,19 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: techshop-mysql
+    container_name: marianistore-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-techshop_db}
-      MYSQL_USER: ${MYSQL_USER:-techshop}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-marianistore_db}
+      MYSQL_USER: ${MYSQL_USER:-marianistore}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
-      - techshop-network
+      - marianistore-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
@@ -25,14 +25,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: techshop-backend
+    container_name: marianistore-backend
     restart: always
     ports:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-techshop_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-techshop}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-marianistore_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-marianistore}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400}
@@ -40,12 +40,12 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - techshop-network
+      - marianistore-network
 
 volumes:
   mysql_data:
     driver: local
 
 networks:
-  techshop-network:
+  marianistore-network:
     driver: bridge
