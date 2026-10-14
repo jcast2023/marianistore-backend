@@ -25,7 +25,7 @@ import com.tiendaonline.service.ProductoService;
 @RequestMapping("/api/productos")
 public class ProductoController {
 
-    
+
     @Autowired
     private ProductoService productoService;
 
@@ -46,12 +46,14 @@ public class ProductoController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProductoDTO> crearProducto(@RequestBody ProductoDTO productoDTO) {
         ProductoDTO creado = productoService.crearProducto(productoDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProductoDTO> actualizarProducto(@PathVariable Integer id, @RequestBody ProductoDTO productoDTO) {
         ProductoDTO actualizado = productoService.actualizarProducto(id, productoDTO);
         if (actualizado == null) {
@@ -61,28 +63,29 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Integer id) {
     	productoService.eliminarProducto(id);
         return ResponseEntity.noContent().build();
     }
-    
+
     @PatchMapping("/{id}/stock")
-    @PreAuthorize("hasAuthority('ADMIN')") 
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProductoDTO> actualizarStock(
-            @PathVariable Integer id, 
-            @RequestBody java.util.Map<String, Integer> body) { 
-        
+            @PathVariable Integer id,
+            @RequestBody java.util.Map<String, Integer> body) {
+
         Integer nuevaCantidad = body.get("stock");
         return ResponseEntity.ok(productoService.actualizarStock(id, nuevaCantidad));
     }
 
-    
+
     @GetMapping("/stock-critico/count")
-    @PreAuthorize("hasAuthority('ADMIN')") 
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Long> obtenerConteoStockCritico() {
         return ResponseEntity.ok(productoService.contarProductosBajoStock());
     }
-    
+
     @GetMapping("/top5")
     public ResponseEntity<List<ProductoDTO>> getTop5Vendidos() {
         return ResponseEntity.ok(productoService.obtenerTop5MasVendidos());
